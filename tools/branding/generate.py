@@ -7,6 +7,7 @@ import argparse
 import os
 import re
 import shlex
+import subprocess
 import sys
 from pathlib import Path
 from typing import NamedTuple
@@ -27,6 +28,8 @@ Branding, BrandingError, build_context, derive_branding = _import_branding_modul
 
 
 ENV_FILE = ".branding.env"
+ESB_INFO_FILE = ".esb-info"
+LOCK_FILE = "branding.lock"
 BRANDING_CONFIG_PATH = Path("config/branding.yaml")
 
 
@@ -133,8 +136,11 @@ _PLACEHOLDER_RE = re.compile(r"{{\s*([A-Z0-9_]+)\s*}}")
 def main() -> int:
     args = parse_args()
     try:
+        lock_data = load_lock_data(REPO_ROOT / LOCK_FILE)
+        validate_tool_commit(lock_data, REPO_ROOT)
         root = resolve_repo_root(args.root)
         brand_name = resolve_brand(args.brand, root, check=args.check)
+        ensure_esb_info(root, brand_name, args.esb_base, check=args.check)
         print(f"==== BRANDING: {brand_name} ====")
         branding = derive_branding(brand_name)
         if not args.check:
@@ -168,6 +174,11 @@ def parse_args() -> argparse.Namespace:
         "--brand",
         default=None,
         help="Brand identifier (defaults to config/branding.yaml)",
+    )
+    parser.add_argument(
+        "--esb-base",
+        default=None,
+        help="ESB base commit/tag for downstream tracking (.esb-info)",
     )
     parser.add_argument("--check", action="store_true", help="Check if outputs are up to date")
     parser.add_argument("--verbose", action="store_true", help="Print rendered outputs")
@@ -209,6 +220,145 @@ def resolve_brand(brand: str | None, root: Path, *, check: bool = False) -> str:
     if config_brand:
         return config_brand
     raise BrandingError("brand is required (use --brand or set config/branding.yaml)")
+
+
+def load_lock_data(path: Path) -> dict[str, str]:
+    if not path.exists():
+        raise BrandingError(f"{LOCK_FILE} not found in tool repo")
+    data: dict[str, str] = {}
+    stack: list[dict[str, str]] = []
+    prefixes: list[str] = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        indent = len(line) - len(line.lstrip(" "))
+        while stack and indent < len(stack) * 2:
+            stack.pop()
+            prefixes.pop()
+        if ":" not in stripped:
+            continue
+        key, raw_value = stripped.split(":", 1)
+        key = key.strip()
+        raw_value = raw_value.strip()
+        if not raw_value:
+            if stack:
+                prefixes.append(f"{prefixes[-1]}{key}.")
+            else:
+                prefixes.append(f"{key}.")
+            stack.append({})
+            continue
+        value = _strip_quotes(raw_value)
+        prefix = prefixes[-1] if prefixes else ""
+        data[f"{prefix}{key}"] = value
+    return data
+
+
+def validate_tool_commit(lock_data: dict[str, str], tool_root: Path) -> None:
+    expected = lock_data.get("tool.commit")
+    if not expected:
+        raise BrandingError("branding.lock missing tool.commit")
+    current = git_rev_parse(tool_root)
+    if current != expected:
+        raise BrandingError(
+            "tool repo commit mismatch (checkout tool.commit from branding.lock)"
+        )
+
+
+def ensure_esb_info(
+    root: Path,
+    brand: str,
+    esb_base: str | None,
+    *,
+    check: bool,
+) -> None:
+    if brand == "esb":
+        return
+    info_path = root / ESB_INFO_FILE
+    info = load_esb_info(info_path)
+    if not info:
+        if not esb_base:
+            raise BrandingError(
+                f"{ESB_INFO_FILE} missing (use --esb-base to create it)"
+            )
+        if check:
+            raise BrandingError(
+                f"{ESB_INFO_FILE} missing for --check (rerun without --check)"
+            )
+        key, value = normalize_esb_base(esb_base)
+        write_esb_info(info_path, key, value)
+        return
+    if not has_esb_base(info):
+        raise BrandingError(f"{ESB_INFO_FILE} missing ESB base entry")
+    if esb_base:
+        key, value = normalize_esb_base(esb_base)
+        existing = info.get(key)
+        if existing:
+            if existing != value:
+                if check:
+                    raise BrandingError(
+                        f"{ESB_INFO_FILE} mismatch for {key} (expected {existing})"
+                    )
+                write_esb_info(info_path, key, value)
+        else:
+            if check:
+                raise BrandingError(
+                    f"{ESB_INFO_FILE} missing {key} (rerun without --check)"
+                )
+            write_esb_info(info_path, key, value)
+
+
+def load_esb_info(path: Path) -> dict[str, str]:
+    if not path.exists():
+        return {}
+    data: dict[str, str] = {}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#") or "=" not in stripped:
+            continue
+        key, value = stripped.split("=", 1)
+        key = key.strip()
+        value = value.strip()
+        if key and value:
+            data[key] = value
+    return data
+
+
+def normalize_esb_base(value: str) -> tuple[str, str]:
+    value = value.strip()
+    if re.fullmatch(r"[0-9a-fA-F]{7,40}", value):
+        return "ESB_BASE_COMMIT", value
+    return "ESB_BASE_TAG", value
+
+
+def has_esb_base(info: dict[str, str]) -> bool:
+    return bool(info.get("ESB_BASE_COMMIT") or info.get("ESB_BASE_TAG"))
+
+
+def write_esb_info(path: Path, key: str, value: str) -> None:
+    content = "\n".join(
+        [
+            "# Auto-generated by branding generator. DO NOT EDIT.",
+            "# Tracks downstream ESB base commit/tag for patching.",
+            f"{key}={value}",
+            "",
+        ]
+    )
+    path.write_text(content, encoding="utf-8")
+
+
+def git_rev_parse(path: Path) -> str:
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(path), "rev-parse", "HEAD"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except subprocess.CalledProcessError as exc:
+        stderr = exc.stderr.strip() if exc.stderr else ""
+        raise BrandingError(f"git rev-parse failed: {stderr}") from exc
+    return result.stdout.strip()
 
 
 def load_brand_from_config(path: Path) -> str | None:

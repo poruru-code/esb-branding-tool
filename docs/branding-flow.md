@@ -14,6 +14,42 @@ Why: Keep the tooling workflow and templates in a single source of truth.
 ## 前提
 - `uv` が使えること。
 - 本ツール repo を利用できること。
+- ESB が private の場合は clone できる認証情報（SSH もしくは Token）があること。
+
+## フロー全体（概要）
+```mermaid
+flowchart TD
+  A[ESB: base repo] --> B[下流 repo 作成]
+  B --> C[ツール repo で生成]
+  C --> D[生成物をコミット]
+  A --> E[base 変更: format-patch]
+  E --> F[下流: git am]
+  F --> G[必要なら再生成]
+  G --> H[生成物を再コミット]
+```
+
+## ツール repo のバージョン固定
+再現性を担保するため、ツール repo はタグ/コミットで固定する。
+```bash
+git clone https://github.com/poruru-code/esb-branding-tool /tmp/esb-branding-tool
+cd /tmp/esb-branding-tool
+git checkout <tool-tag-or-commit>
+```
+ESB のスナップショットは `branding.lock` を参照する。
+- `source.esb_commit`: 対象の ESB コミット
+- `tool.commit`: 対応するツールコミット
+- 下流の生成では `tool.commit` に合わせて `git checkout` する
+
+## BASE_COMMIT の決め方
+`BASE_COMMIT` は「下流が最後に取り込んだ ESB コミット/タグ」を指す。
+- 例: 直近で取り込んだ ESB の commit SHA / tag
+- 下流 repo 側で記録しておく（例: メモ用ファイルやタグなど）
+生成時は `.esb-info` を使用する。
+```bash
+ESB_BASE_COMMIT=<sha>
+# または
+ESB_BASE_TAG=<tag>
+```
 
 ## コマンド早見
 - 生成: `uv run python tools/branding/generate.py --root <target> --brand <name>`
@@ -23,7 +59,8 @@ Why: Keep the tooling workflow and templates in a single source of truth.
 ## ESB の整合チェック（ベース側）
 ```bash
 git clone https://github.com/poruru-code/edge-serverless-box /tmp/esb-check
-cd /path/to/esb-branding-tool
+cd /tmp/esb-branding-tool
+git -C /tmp/esb-check checkout <esb_commit_or_tag>
 uv run python tools/branding/generate.py --root /tmp/esb-check --check --brand esb
 ```
 ESB 側の生成物が最新であることを前提とする。テンプレート更新後はツール repo 側で `--check` を行う。
@@ -34,9 +71,13 @@ git clone <base-repo-url> <downstream-repo>
 git clone https://github.com/poruru-code/esb-branding-tool /tmp/esb-branding-tool
 
 cd /tmp/esb-branding-tool
-uv run python tools/branding/generate.py --root <downstream-repo> --brand acme
+uv run python tools/branding/generate.py \
+  --root <downstream-repo> \
+  --brand acme \
+  --esb-base <base-commit-or-tag>
 
 cd <downstream-repo>
+git status -sb
 git add .
 git commit -m "Branding: acme"
 ```
@@ -49,14 +90,39 @@ git format-patch <BASE_COMMIT>..HEAD -o /tmp/branding-patches
 # downstream 側
 git am /tmp/branding-patches/*.patch
 ```
+`BASE_COMMIT` は「下流が最後に取り込んだ ESB コミット/タグ」を使用する。
+取り込み後は下流 repo 側の記録も更新する。
 
-テンプレートや生成ロジックに更新が入った場合は再生成して差分を固定する。
+パッチ適用後は必ず差分確認を行い、必要なら再生成して差分を固定する。
 ```bash
 cd /tmp/esb-branding-tool
-uv run python tools/branding/generate.py --root <downstream-repo> --brand <downstream_brand>
+uv run python tools/branding/generate.py --root <downstream-repo> --check --brand <downstream_brand>
+uv run python tools/branding/generate.py \
+  --root <downstream-repo> \
+  --brand <downstream_brand> \
+  --esb-base <new-base-commit-or-tag>
 cd <downstream-repo>
 git add .
 git commit -m "Branding: regenerate for upstream changes"
+```
+
+### パッチ適用時のシーケンス
+```mermaid
+sequenceDiagram
+  participant Base as Base repo (ESB)
+  participant Down as Downstream repo
+  participant Tool as Branding tool
+
+  Base->>Base: format-patch <BASE_COMMIT>..HEAD
+  Base-->>Down: patches (*.patch)
+  Down->>Down: git am patches
+  Tool->>Tool: generate.py --check --root <downstream> --brand <brand>
+  alt mismatch detected
+    Tool->>Tool: generate.py --root <downstream> --brand <brand>
+    Down->>Down: git add/commit (regenerate)
+  else no diff
+    Down->>Down: no changes
+  end
 ```
 
 ## 生成時の副作用
@@ -81,7 +147,8 @@ git commit -m "Branding: regenerate for upstream changes"
 - 関数イメージには `com.<slug>.image_fingerprint` ラベルを付け、更新判定に使う。
 
 ## CA とビルドフロー
-- `uv run python tools/cert-gen/generate.py` で証明書を生成し、`CAROOT` は `~/.<slug>/certs` を使う。
+- 証明書生成は ESB / 下流 repo 側で `uv run python tools/cert-gen/generate.py` を実行する。
+- `CAROOT` は `~/.<slug>/certs` を使う。
 - Docker ビルドでは `ROOT_CA_FINGERPRINT` を渡し、再生成済みの compose / runtime ファイルを参照する。
 
 ## テスト/確認
