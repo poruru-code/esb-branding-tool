@@ -1,0 +1,414 @@
+# Where: tools/branding/generate.py
+# What: Render branding templates into concrete files.
+# Why: Regenerate branded assets from a single source of truth.
+from __future__ import annotations
+
+import argparse
+import os
+import re
+import shlex
+import sys
+from pathlib import Path
+from typing import NamedTuple
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+TEMPLATE_ROOT = REPO_ROOT
+
+
+def _import_branding_modules():
+    from tools.branding.branding import Branding, BrandingError, build_context, derive_branding
+
+    return Branding, BrandingError, build_context, derive_branding
+
+
+Branding, BrandingError, build_context, derive_branding = _import_branding_modules()
+
+
+ENV_FILE = ".branding.env"
+BRANDING_CONFIG_PATH = Path("config/branding.yaml")
+
+
+class TemplateSpec(NamedTuple):
+    template: str
+    target: str
+
+
+TEMPLATES: tuple[TemplateSpec, ...] = (
+    TemplateSpec("tools/branding/templates/entrypoint.sh.tmpl", "entrypoint.sh"),
+    TemplateSpec(
+        "tools/branding/templates/services/runtime-node/entrypoint.sh.tmpl",
+        "services/runtime-node/entrypoint.sh",
+    ),
+    TemplateSpec(
+        "tools/branding/templates/services/runtime-node/entrypoint.common.sh.tmpl",
+        "services/runtime-node/entrypoint.common.sh",
+    ),
+    TemplateSpec(
+        "tools/branding/templates/docker-compose.yml.tmpl",
+        "docker-compose.yml",
+    ),
+    TemplateSpec(
+        "tools/branding/templates/docker-compose.containerd.yml.tmpl",
+        "docker-compose.containerd.yml",
+    ),
+    TemplateSpec(
+        "tools/branding/templates/docker-compose.docker.yml.tmpl",
+        "docker-compose.docker.yml",
+    ),
+    TemplateSpec(
+        "tools/branding/templates/docker-compose.fc.yml.tmpl",
+        "docker-compose.fc.yml",
+    ),
+    TemplateSpec(
+        "tools/branding/templates/docker-compose.worker.yml.tmpl",
+        "docker-compose.worker.yml",
+    ),
+    TemplateSpec(
+        "tools/branding/templates/docker-compose.registry.yml.tmpl",
+        "docker-compose.registry.yml",
+    ),
+    TemplateSpec(
+        "tools/branding/templates/services/agent/internal/runtime/branding_gen.go.tmpl",
+        "services/agent/internal/runtime/branding_gen.go",
+    ),
+    TemplateSpec(
+        "tools/branding/templates/cli/internal/constants/branding_gen.go.tmpl",
+        "cli/internal/constants/branding_gen.go",
+    ),
+    TemplateSpec(
+        "tools/branding/templates/services/agent/config/cni/10-cni.conflist.tmpl",
+        "services/agent/config/cni/10-{{SLUG}}.conflist",
+    ),
+    TemplateSpec(
+        "tools/branding/templates/services/agent/Dockerfile.tmpl",
+        "services/agent/Dockerfile",
+    ),
+    TemplateSpec(
+        "tools/branding/templates/services/runtime-node/Dockerfile.tmpl",
+        "services/runtime-node/Dockerfile",
+    ),
+    TemplateSpec(
+        "tools/branding/templates/services/runtime-node/Dockerfile.firecracker.tmpl",
+        "services/runtime-node/Dockerfile.firecracker",
+    ),
+    TemplateSpec(
+        "tools/branding/templates/services/gateway/Dockerfile.tmpl",
+        "services/gateway/Dockerfile",
+    ),
+    TemplateSpec(
+        "tools/branding/templates/services/gateway/Dockerfile.firecracker.tmpl",
+        "services/gateway/Dockerfile.firecracker",
+    ),
+    TemplateSpec(
+        "tools/branding/templates/cli/internal/constants/env.go.tmpl",
+        "cli/internal/constants/env.go",
+    ),
+    TemplateSpec(
+        "tools/branding/templates/Makefile.tmpl",
+        "Makefile",
+    ),
+    TemplateSpec(
+        "tools/branding/templates/config/container-structure-test/os-base.yaml.tmpl",
+        "config/container-structure-test/os-base.yaml",
+    ),
+    TemplateSpec(
+        "tools/branding/templates/config/container-structure-test/python-base.yaml.tmpl",
+        "config/container-structure-test/python-base.yaml",
+    ),
+    TemplateSpec(
+        "tools/branding/templates/config/container-structure-test/agent.yaml.tmpl",
+        "config/container-structure-test/agent.yaml",
+    ),
+    TemplateSpec(
+        "tools/branding/templates/tools/cert-gen/config.toml.tmpl",
+        "tools/cert-gen/config.toml",
+    ),
+)
+
+_PLACEHOLDER_RE = re.compile(r"{{\s*([A-Z0-9_]+)\s*}}")
+
+
+def main() -> int:
+    args = parse_args()
+    try:
+        root = resolve_repo_root(args.root)
+        brand_name = resolve_brand(args.brand, root, check=args.check)
+        print(f"==== BRANDING: {brand_name} ====")
+        branding = derive_branding(brand_name)
+        if not args.check:
+            write_branding_env(root, branding, brand_name)
+        context = build_context(branding)
+        if not args.check:
+            cleanup_old_cni_configs(root, context["SLUG"])
+        mismatches = render_templates(
+            root,
+            context,
+            args.check,
+            args.verbose,
+            strip_header=args.no_header,
+        )
+    except BrandingError as exc:
+        print(f"branding error: {exc}")
+        return 1
+
+    if args.check and mismatches:
+        print("branding templates out of date:")
+        for path in mismatches:
+            print(f"  - {path}")
+        return 1
+    return 0
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Render branding templates")
+    parser.add_argument("--root", type=Path, default=None, help="Repository root override")
+    parser.add_argument(
+        "--brand",
+        default=None,
+        help="Brand identifier (defaults to config/branding.yaml)",
+    )
+    parser.add_argument("--check", action="store_true", help="Check if outputs are up to date")
+    parser.add_argument("--verbose", action="store_true", help="Print rendered outputs")
+    parser.add_argument(
+        "--no-header",
+        action="store_true",
+        help="Skip writing auto-generated headers when writing files",
+    )
+    return parser.parse_args()
+
+
+def resolve_repo_root(root: Path | None) -> Path:
+    if root is not None:
+        return root.resolve()
+    start = Path.cwd().resolve()
+    for candidate in [start, *start.parents]:
+        if (candidate / "docker-compose.yml").exists():
+            return candidate
+    raise BrandingError("repository root not found (docker-compose.yml missing)")
+
+
+def resolve_brand(brand: str | None, root: Path, *, check: bool = False) -> str:
+    config_path = root / BRANDING_CONFIG_PATH
+    config_brand = load_brand_from_config(config_path)
+    if brand is not None and brand.strip():
+        brand_value = brand.strip()
+        if config_brand and config_brand != brand_value:
+            if check:
+                raise BrandingError(
+                    f"brand mismatch for --check (config={config_brand}, requested={brand_value})"
+                )
+            # Update branding configuration to match requested brand
+            write_brand_config(config_path, brand_value)
+        elif not config_brand:
+            if check:
+                raise BrandingError("brand missing in config/branding.yaml for --check")
+            write_brand_config(config_path, brand_value)
+        return brand_value
+    if config_brand:
+        return config_brand
+    raise BrandingError("brand is required (use --brand or set config/branding.yaml)")
+
+
+def load_brand_from_config(path: Path) -> str | None:
+    if not path.exists():
+        return None
+    raw = path.read_text(encoding="utf-8").splitlines()
+    for line in raw:
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        if not stripped.startswith("brand:"):
+            continue
+        value = stripped.split(":", 1)[1].strip()
+        value = _strip_inline_comment(value)
+        value = _strip_quotes(value)
+        if value:
+            return value
+        break
+    raise BrandingError("config/branding.yaml missing 'brand' value")
+
+
+def _strip_inline_comment(value: str) -> str:
+    if not value:
+        return value
+    if value.startswith(("'", '"')):
+        quote = value[0]
+        end = value.find(quote, 1)
+        if end != -1:
+            return value[: end + 1]
+        return value
+    return value.split("#", 1)[0].strip()
+
+
+def _strip_quotes(value: str) -> str:
+    if len(value) < 2:
+        return value
+    if value[0] == value[-1] and value[0] in {"'", '"'}:
+        return value[1:-1].strip()
+    return value
+
+
+def write_brand_config(path: Path, brand: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    content = "\n".join(
+        [
+            "# Where: config/branding.yaml",
+            "# What: Branding identifier for generator defaults.",
+            "# Why: Keep branding reproducible across clones.",
+            f"brand: {brand}",
+        ]
+    )
+    content += "\n"
+    path.write_text(content, encoding="utf-8")
+
+
+def render_templates(
+    root: Path,
+    context: dict[str, str],
+    check: bool,
+    verbose: bool,
+    *,
+    strip_header: bool = False,
+) -> list[str]:
+    mismatches: list[str] = []
+    for spec in TEMPLATES:
+        template_path = TEMPLATE_ROOT / spec.template
+        target_path = root / render_string(spec.target, context)
+        template = template_path.read_text(encoding="utf-8")
+        rendered = render_string(template, context)
+        if strip_header:
+            rendered = remove_header(rendered, template_path)
+
+        if check:
+            if not target_path.exists():
+                mismatches.append(str(target_path))
+                continue
+            existing = target_path.read_text(encoding="utf-8")
+            if existing != rendered:
+                mismatches.append(str(target_path))
+            continue
+
+        if verbose:
+            print(f"render {template_path} -> {target_path}")
+        write_file(target_path, rendered)
+    return mismatches
+
+
+def render_string(template: str, context: dict[str, str]) -> str:
+    def replace(match: re.Match[str]) -> str:
+        key = match.group(1)
+        if key not in context:
+            raise BrandingError(f"unknown template key: {key}")
+        return context[key]
+
+    rendered = _PLACEHOLDER_RE.sub(replace, template)
+    if _PLACEHOLDER_RE.search(rendered):
+        raise BrandingError("unresolved template placeholders detected")
+    return rendered
+
+
+def write_file(path: Path, content: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    mode = None
+    if path.exists():
+        mode = path.stat().st_mode & 0o777
+    else:
+        mode = 0o755 if path.suffix == ".sh" else 0o644
+    path.write_text(content, encoding="utf-8")
+    os.chmod(path, mode)
+
+
+def cleanup_old_cni_configs(root: Path, slug: str) -> None:
+    cni_dir = root / "services/agent/config/cni"
+    if not cni_dir.exists():
+        return
+    current = f"10-{slug}.conflist"
+    for entry in cni_dir.glob("10-*.conflist"):
+        if entry.name == current:
+            continue
+        try:
+            entry.unlink()
+        except OSError:
+            pass
+
+
+def write_branding_env(root: Path, branding: Branding, brand_name: str) -> Path:
+    path = root / ENV_FILE
+    env_vars = (
+        ("BRANDING_NAME", brand_name),
+        ("BRANDING_CLI_NAME", branding.cli_name),
+        ("BRANDING_SLUG", branding.slug),
+        ("BRANDING_ENV_PREFIX", branding.env_prefix),
+        ("BRANDING_IMAGE_PREFIX", branding.image_prefix),
+        ("BRANDING_LABEL_PREFIX", branding.label_prefix),
+    )
+    lines = [
+        "# Auto-generated by branding generator. DO NOT EDIT.",
+        "# Source this file to populate common branding identifiers.",
+    ]
+    for name, value in env_vars:
+        lines.append(f"export {name}={shlex.quote(value)}")
+    content = "\n".join(lines) + "\n"
+    path.write_text(content, encoding="utf-8")
+    os.chmod(path, 0o644)
+    os.environ.update({name: value for name, value in env_vars})
+    return path
+
+
+def remove_header(content: str, template_path: Path) -> str:
+    if template_path.name.endswith(".conflist.tmpl"):
+        return _strip_json_comment(content)
+    return _strip_comment_header(content)
+
+
+def _strip_json_comment(content: str) -> str:
+    lines = content.splitlines()
+    result: list[str] = []
+    skipped = False
+    for line in lines:
+        stripped = line.lstrip()
+        if not skipped and '"_comment"' in stripped:
+            skipped = True
+            continue
+        result.append(line)
+    result_text = "\n".join(result)
+    if content.endswith("\n"):
+        result_text += "\n"
+    return result_text
+
+
+def _strip_comment_header(content: str) -> str:
+    lines = content.splitlines()
+    idx = 0
+    prefix: list[str] = []
+    if lines and lines[0].startswith("#!"):
+        prefix.append(lines[0])
+        idx = 1
+    while idx < len(lines):
+        line = lines[idx]
+        stripped = line.strip()
+        if not stripped:
+            idx += 1
+            continue
+        if stripped.startswith("#") or stripped.startswith("//"):
+            idx += 1
+            continue
+        break
+    remainder = lines[idx:]
+    trimmed = list(remainder)
+    while trimmed and not trimmed[0].strip():
+        trimmed.pop(0)
+    if prefix:
+        result_lines = prefix + ([""] if trimmed and trimmed[0].strip() else []) + trimmed
+    else:
+        result_lines = trimmed
+    result_text = "\n".join(result_lines)
+    if content.endswith("\n"):
+        result_text += "\n"
+    return result_text
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

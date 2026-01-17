@@ -1,0 +1,127 @@
+# Where: .github/workflows/branding-check.yml
+# What: Validate ESB branding outputs and update branding.lock.
+# Why: Keep tool repo in sync with ESB template changes.
+name: Branding Check
+
+on:
+  repository_dispatch:
+    types: [branding-check]
+  workflow_dispatch:
+    inputs:
+      esb_repo:
+        description: "owner/repo or https://github.com/owner/repo(.git)"
+        required: true
+      esb_ref:
+        description: "commit/tag/branch"
+        required: true
+      brand:
+        description: "brand identifier"
+        required: false
+        default: esb
+
+concurrency:
+  group: branding-check
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout tool repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Resolve payload
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import sys
+
+          event_path = os.environ["GITHUB_EVENT_PATH"]
+          event = json.load(open(event_path, "r", encoding="utf-8"))
+
+          def pick(data, keys):
+            for key in keys:
+              value = data.get(key)
+              if value is None:
+                continue
+              value = str(value).strip()
+              if value:
+                return value
+            return None
+
+          payload = event.get("client_payload") or {}
+          inputs = event.get("inputs") or {}
+
+          esb_repo = pick(payload, ["esb_repo"]) or pick(inputs, ["esb_repo"])
+          esb_ref = pick(payload, ["esb_ref", "esb_commit"]) or pick(inputs, ["esb_ref", "esb_commit"])
+          brand = pick(payload, ["brand"]) or pick(inputs, ["brand"]) or "esb"
+
+          if not esb_repo or not esb_ref:
+            print("esb_repo and esb_ref are required", file=sys.stderr)
+            sys.exit(1)
+
+          repo_slug = esb_repo
+          if "github.com" in esb_repo:
+            repo_slug = esb_repo.split("github.com", 1)[1].lstrip("/").rstrip("/")
+            if repo_slug.endswith(".git"):
+              repo_slug = repo_slug[:-4]
+
+          if "/" not in repo_slug:
+            print(f"invalid esb_repo: {esb_repo}", file=sys.stderr)
+            sys.exit(1)
+
+          if esb_repo.startswith("http"):
+            repo_url = esb_repo
+          else:
+            repo_url = f"https://github.com/{repo_slug}.git"
+
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as handle:
+            handle.write(f"ESB_REPO={repo_slug}\n")
+            handle.write(f"ESB_REPO_URL={repo_url}\n")
+            handle.write(f"ESB_REF={esb_ref}\n")
+            handle.write(f"BRAND={brand}\n")
+          PY
+
+      - name: Checkout ESB
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.ESB_REPO }}
+          ref: ${{ env.ESB_REF }}
+          path: esb
+          token: ${{ secrets.ESB_REPO_TOKEN || github.token }}
+
+      - name: Branding check
+        run: |
+          uv run python tools/branding/generate.py \
+            --root "${{ github.workspace }}/esb" \
+            --check \
+            --brand "${{ env.BRAND }}"
+
+      - name: Update branding.lock
+        run: |
+          uv run python tools/branding/update_lock.py \
+            --esb-dir "${{ github.workspace }}/esb" \
+            --esb-repo "${{ env.ESB_REPO_URL }}" \
+            --esb-ref "${{ env.ESB_REF }}" \
+            --brand "${{ env.BRAND }}"
+
+      - name: Commit branding.lock
+        run: |
+          if git diff --quiet -- branding.lock; then
+            echo "branding.lock unchanged"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add branding.lock
+          git commit -m "Branding: update lock"
+          git push
