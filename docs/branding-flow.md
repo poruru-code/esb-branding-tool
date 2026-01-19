@@ -1,8 +1,3 @@
-<!--
-Where: docs/branding-flow.md
-What: Branding generation + downstream update flow for ESB.
-Why: Keep the tooling workflow and templates in a single source of truth.
--->
 # ブランディング運用フロー（ESB + 下流）
 
 ## 目的と原則

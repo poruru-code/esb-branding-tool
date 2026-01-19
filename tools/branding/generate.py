@@ -19,7 +19,12 @@ TEMPLATE_ROOT = REPO_ROOT
 
 
 def _import_branding_modules():
-    from tools.branding.branding import Branding, BrandingError, build_context, derive_branding
+    from tools.branding.branding import (
+        Branding,
+        BrandingError,
+        build_context,
+        derive_branding,
+    )
 
     return Branding, BrandingError, build_context, derive_branding
 
@@ -39,95 +44,10 @@ class TemplateSpec(NamedTuple):
 
 
 TEMPLATES: tuple[TemplateSpec, ...] = (
-    TemplateSpec("tools/branding/templates/entrypoint.sh.tmpl", "entrypoint.sh"),
     TemplateSpec(
-        "tools/branding/templates/services/runtime-node/entrypoint.sh.tmpl",
-        "services/runtime-node/entrypoint.sh",
+        "tools/branding/templates/config/defaults.env.tmpl", "config/defaults.env"
     ),
-    TemplateSpec(
-        "tools/branding/templates/services/runtime-node/entrypoint.common.sh.tmpl",
-        "services/runtime-node/entrypoint.common.sh",
-    ),
-    TemplateSpec(
-        "tools/branding/templates/docker-compose.yml.tmpl",
-        "docker-compose.yml",
-    ),
-    TemplateSpec(
-        "tools/branding/templates/docker-compose.containerd.yml.tmpl",
-        "docker-compose.containerd.yml",
-    ),
-    TemplateSpec(
-        "tools/branding/templates/docker-compose.docker.yml.tmpl",
-        "docker-compose.docker.yml",
-    ),
-    TemplateSpec(
-        "tools/branding/templates/docker-compose.fc.yml.tmpl",
-        "docker-compose.fc.yml",
-    ),
-    TemplateSpec(
-        "tools/branding/templates/docker-compose.worker.yml.tmpl",
-        "docker-compose.worker.yml",
-    ),
-    TemplateSpec(
-        "tools/branding/templates/docker-compose.registry.yml.tmpl",
-        "docker-compose.registry.yml",
-    ),
-    TemplateSpec(
-        "tools/branding/templates/services/agent/internal/runtime/branding_gen.go.tmpl",
-        "services/agent/internal/runtime/branding_gen.go",
-    ),
-    TemplateSpec(
-        "tools/branding/templates/cli/internal/constants/branding_gen.go.tmpl",
-        "cli/internal/constants/branding_gen.go",
-    ),
-    TemplateSpec(
-        "tools/branding/templates/services/agent/config/cni/10-cni.conflist.tmpl",
-        "services/agent/config/cni/10-{{SLUG}}.conflist",
-    ),
-    TemplateSpec(
-        "tools/branding/templates/services/agent/Dockerfile.tmpl",
-        "services/agent/Dockerfile",
-    ),
-    TemplateSpec(
-        "tools/branding/templates/services/runtime-node/Dockerfile.tmpl",
-        "services/runtime-node/Dockerfile",
-    ),
-    TemplateSpec(
-        "tools/branding/templates/services/runtime-node/Dockerfile.firecracker.tmpl",
-        "services/runtime-node/Dockerfile.firecracker",
-    ),
-    TemplateSpec(
-        "tools/branding/templates/services/gateway/Dockerfile.tmpl",
-        "services/gateway/Dockerfile",
-    ),
-    TemplateSpec(
-        "tools/branding/templates/services/gateway/Dockerfile.firecracker.tmpl",
-        "services/gateway/Dockerfile.firecracker",
-    ),
-    TemplateSpec(
-        "tools/branding/templates/cli/internal/constants/env.go.tmpl",
-        "cli/internal/constants/env.go",
-    ),
-    TemplateSpec(
-        "tools/branding/templates/Makefile.tmpl",
-        "Makefile",
-    ),
-    TemplateSpec(
-        "tools/branding/templates/config/container-structure-test/os-base.yaml.tmpl",
-        "config/container-structure-test/os-base.yaml",
-    ),
-    TemplateSpec(
-        "tools/branding/templates/config/container-structure-test/python-base.yaml.tmpl",
-        "config/container-structure-test/python-base.yaml",
-    ),
-    TemplateSpec(
-        "tools/branding/templates/config/container-structure-test/agent.yaml.tmpl",
-        "config/container-structure-test/agent.yaml",
-    ),
-    TemplateSpec(
-        "tools/branding/templates/tools/cert-gen/config.toml.tmpl",
-        "tools/cert-gen/config.toml",
-    ),
+    TemplateSpec("tools/branding/templates/meta/meta.go.tmpl", "meta/meta.go"),
 )
 
 _PLACEHOLDER_RE = re.compile(r"{{\s*([A-Z0-9_]+)\s*}}")
@@ -137,23 +57,22 @@ def main() -> int:
     args = parse_args()
     try:
         lock_data = load_lock_data(REPO_ROOT / LOCK_FILE)
-        validate_tool_commit(lock_data, REPO_ROOT)
+        validate_tool_commit(lock_data, REPO_ROOT, skip=args.force)
         root = resolve_repo_root(args.root)
         brand_name = resolve_brand(args.brand, root, check=args.check)
-        ensure_esb_info(root, brand_name, args.esb_base, check=args.check)
+        ensure_esb_info(
+            root, brand_name, args.esb_base, check=args.check, force=args.force
+        )
         print(f"==== BRANDING: {brand_name} ====")
         branding = derive_branding(brand_name)
         if not args.check:
             write_branding_env(root, branding, brand_name)
         context = build_context(branding)
-        if not args.check:
-            cleanup_old_cni_configs(root, context["SLUG"])
         mismatches = render_templates(
             root,
             context,
             args.check,
             args.verbose,
-            strip_header=args.no_header,
         )
     except BrandingError as exc:
         print(f"branding error: {exc}")
@@ -169,8 +88,11 @@ def main() -> int:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Render branding templates")
-    parser.add_argument("--root", type=Path, default=None, help="Repository root override")
     parser.add_argument(
+        "-r", "--root", type=Path, default=None, help="Repository root override"
+    )
+    parser.add_argument(
+        "-b",
         "--brand",
         default=None,
         help="Brand identifier (defaults to config/branding.yaml)",
@@ -180,7 +102,15 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="ESB base commit/tag for downstream tracking (.esb-info)",
     )
-    parser.add_argument("--check", action="store_true", help="Check if outputs are up to date")
+    parser.add_argument(
+        "--check", action="store_true", help="Check if outputs are up to date"
+    )
+    parser.add_argument(
+        "-f",
+        "--force",
+        action="store_true",
+        help="Skip tool commit validation (warn instead of error)",
+    )
     parser.add_argument("--verbose", action="store_true", help="Print rendered outputs")
     parser.add_argument(
         "--no-header",
@@ -210,12 +140,11 @@ def resolve_brand(brand: str | None, root: Path, *, check: bool = False) -> str:
                 raise BrandingError(
                     f"brand mismatch for --check (config={config_brand}, requested={brand_value})"
                 )
-            # Update branding configuration to match requested brand
-            write_brand_config(config_path, brand_value)
+            # DO NOT auto-update branding.yaml when explicitly requested via --brand
         elif not config_brand:
             if check:
                 raise BrandingError("brand missing in config/branding.yaml for --check")
-            write_brand_config(config_path, brand_value)
+            # DO NOT auto-create branding.yaml when explicitly requested via --brand
         return brand_value
     if config_brand:
         return config_brand
@@ -254,12 +183,21 @@ def load_lock_data(path: Path) -> dict[str, str]:
     return data
 
 
-def validate_tool_commit(lock_data: dict[str, str], tool_root: Path) -> None:
+def validate_tool_commit(
+    lock_data: dict[str, str], tool_root: Path, *, skip: bool = False
+) -> None:
     expected = lock_data.get("tool.commit")
     if not expected:
         raise BrandingError("branding.lock missing tool.commit")
     current = git_rev_parse(tool_root)
     if current != expected:
+        if skip:
+            print(
+                f"WARNING: tool repo commit mismatch "
+                f"(expected={expected[:8]}, current={current[:8]})",
+                file=sys.stderr,
+            )
+            return
         raise BrandingError(
             "tool repo commit mismatch (checkout tool.commit from branding.lock)"
         )
@@ -271,6 +209,7 @@ def ensure_esb_info(
     esb_base: str | None,
     *,
     check: bool,
+    force: bool = False,
 ) -> None:
     if brand == "esb":
         return
@@ -278,6 +217,12 @@ def ensure_esb_info(
     info = load_esb_info(info_path)
     if not info:
         if not esb_base:
+            if force:
+                print(
+                    f"WARNING: {ESB_INFO_FILE} missing (skipped with --force)",
+                    file=sys.stderr,
+                )
+                return
             raise BrandingError(
                 f"{ESB_INFO_FILE} missing (use --esb-base to create it)"
             )
@@ -465,23 +410,10 @@ def write_file(path: Path, content: str) -> None:
     if path.exists():
         mode = path.stat().st_mode & 0o777
     else:
+        # Default for generated files. Executable if .sh.
         mode = 0o755 if path.suffix == ".sh" else 0o644
     path.write_text(content, encoding="utf-8")
     os.chmod(path, mode)
-
-
-def cleanup_old_cni_configs(root: Path, slug: str) -> None:
-    cni_dir = root / "services/agent/config/cni"
-    if not cni_dir.exists():
-        return
-    current = f"10-{slug}.conflist"
-    for entry in cni_dir.glob("10-*.conflist"):
-        if entry.name == current:
-            continue
-        try:
-            entry.unlink()
-        except OSError:
-            pass
 
 
 def write_branding_env(root: Path, branding: Branding, brand_name: str) -> Path:
@@ -551,7 +483,9 @@ def _strip_comment_header(content: str) -> str:
     while trimmed and not trimmed[0].strip():
         trimmed.pop(0)
     if prefix:
-        result_lines = prefix + ([""] if trimmed and trimmed[0].strip() else []) + trimmed
+        result_lines = (
+            prefix + ([""] if trimmed and trimmed[0].strip() else []) + trimmed
+        )
     else:
         result_lines = trimmed
     result_text = "\n".join(result_lines)
