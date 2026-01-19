@@ -57,10 +57,12 @@ def main() -> int:
     args = parse_args()
     try:
         lock_data = load_lock_data(REPO_ROOT / LOCK_FILE)
-        validate_tool_commit(lock_data, REPO_ROOT)
+        validate_tool_commit(lock_data, REPO_ROOT, skip=args.force)
         root = resolve_repo_root(args.root)
         brand_name = resolve_brand(args.brand, root, check=args.check)
-        ensure_esb_info(root, brand_name, args.esb_base, check=args.check)
+        ensure_esb_info(
+            root, brand_name, args.esb_base, check=args.check, force=args.force
+        )
         print(f"==== BRANDING: {brand_name} ====")
         branding = derive_branding(brand_name)
         if not args.check:
@@ -87,9 +89,10 @@ def main() -> int:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Render branding templates")
     parser.add_argument(
-        "--root", type=Path, default=None, help="Repository root override"
+        "-r", "--root", type=Path, default=None, help="Repository root override"
     )
     parser.add_argument(
+        "-b",
         "--brand",
         default=None,
         help="Brand identifier (defaults to config/branding.yaml)",
@@ -101,6 +104,12 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--check", action="store_true", help="Check if outputs are up to date"
+    )
+    parser.add_argument(
+        "-f",
+        "--force",
+        action="store_true",
+        help="Skip tool commit validation (warn instead of error)",
     )
     parser.add_argument("--verbose", action="store_true", help="Print rendered outputs")
     parser.add_argument(
@@ -174,12 +183,21 @@ def load_lock_data(path: Path) -> dict[str, str]:
     return data
 
 
-def validate_tool_commit(lock_data: dict[str, str], tool_root: Path) -> None:
+def validate_tool_commit(
+    lock_data: dict[str, str], tool_root: Path, *, skip: bool = False
+) -> None:
     expected = lock_data.get("tool.commit")
     if not expected:
         raise BrandingError("branding.lock missing tool.commit")
     current = git_rev_parse(tool_root)
     if current != expected:
+        if skip:
+            print(
+                f"WARNING: tool repo commit mismatch "
+                f"(expected={expected[:8]}, current={current[:8]})",
+                file=sys.stderr,
+            )
+            return
         raise BrandingError(
             "tool repo commit mismatch (checkout tool.commit from branding.lock)"
         )
@@ -191,6 +209,7 @@ def ensure_esb_info(
     esb_base: str | None,
     *,
     check: bool,
+    force: bool = False,
 ) -> None:
     if brand == "esb":
         return
@@ -198,6 +217,12 @@ def ensure_esb_info(
     info = load_esb_info(info_path)
     if not info:
         if not esb_base:
+            if force:
+                print(
+                    f"WARNING: {ESB_INFO_FILE} missing (skipped with --force)",
+                    file=sys.stderr,
+                )
+                return
             raise BrandingError(
                 f"{ESB_INFO_FILE} missing (use --esb-base to create it)"
             )
