@@ -1,12 +1,12 @@
 schema_version: 1
-locked_at: "2026-01-20T00:52:51Z"
+locked_at: "2026-01-20T00:56:47Z"
 
 tool:
-  commit: "145dcdd5044b6a4b6f9382ff72b008bbd56dde2a"
+  commit: "132e3cd496984692a0b5b7d3d570a8b31b87d6ee"
 
 source:
   esb_repo: "https://github.com/poruru-code/edge-serverless-box.git"
-  esb_commit: "de2bb2fbe4977b8deb4b48894822aca03d3d446a"
+  esb_commit: "ccc17710e986968b32e1441daeae5d7d148545f9"
 
 parameters:
   brand: "esb"
