@@ -81,12 +81,6 @@ services:
       - CNI_SUBNET=${CNI_SUBNET:-}
       - AGENT_RUNTIME=containerd
       - CONTAINERD_RUNTIME=aws.firecracker
-      - HTTP_PROXY
-      - HTTPS_PROXY
-      - NO_PROXY
-      - http_proxy
-      - https_proxy
-      - no_proxy
       # mTLS (disabled for Firecracker mode)
       # - AGENT_GRPC_TLS_ENABLED=1
       # - AGENT_GRPC_CERT_PATH=/app/config/ssl/server.crt

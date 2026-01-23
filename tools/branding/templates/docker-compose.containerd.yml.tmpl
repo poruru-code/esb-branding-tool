@@ -153,12 +153,6 @@ services:
       - AWS_DEFAULT_REGION=us-east-1
       - AWS_ACCESS_KEY_ID=${RUSTFS_ACCESS_KEY:-{{SLUG}}}
       - AWS_SECRET_ACCESS_KEY=${RUSTFS_SECRET_KEY:-{{SLUG}}secret}
-      - HTTP_PROXY
-      - HTTPS_PROXY
-      - NO_PROXY
-      - http_proxy
-      - https_proxy
-      - no_proxy
     networks:
       external_network: {}
 
@@ -247,12 +241,6 @@ services:
       - AGENT_GRPC_CA_CERT_PATH=/app/config/ssl/rootCA.crt
       - CONTAINERS_NETWORK=${NETWORK_EXTERNAL:-${PROJECT_NAME:-{{SLUG}}-${ENV:-default}}-external}
       - ENV
-      - HTTP_PROXY
-      - HTTPS_PROXY
-      - NO_PROXY
-      - http_proxy
-      - https_proxy
-      - no_proxy
     command: ["/app/agent"]
     restart: unless-stopped
 
@@ -310,12 +298,6 @@ services:
     volumes:
       - ${CERT_DIR:-~/{{HOME_DIR}}/certs}:/app/config/ssl:ro
     environment:
-      - HTTP_PROXY
-      - HTTPS_PROXY
-      - NO_PROXY
-      - http_proxy
-      - https_proxy
-      - no_proxy
       # --- Required / Core Authentication (auto-generated if unset) ---
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:-}
       - X_API_KEY=${X_API_KEY:-}
