@@ -1,7 +1,7 @@
 # ブランディング運用フロー（ESB + 下流）
 
 ## 目的と原則
-- ESB 本体は常に `brand: esb` を維持する（下流固有情報は含めない）。
+- ESB 本体は常に `config/defaults.env` の `CLI_CMD=esb` を維持する（下流固有情報は含めない）。
 - ブランド変更は下流でのみ行う。
 - 生成物のみコミットし、`.branding.env` は追跡しない。
 - テンプレートと生成ツールは `esb-branding-tool` に集約する。
@@ -121,7 +121,8 @@ sequenceDiagram
 ```
 
 ## 生成時の副作用
-- `config/branding.yaml` が指定ブランドで更新される。
+- `config/defaults.env`（`CLI_CMD` / `IMAGE_PREFIX` / `ENV_PREFIX`）が指定ブランドで更新される。
+- `meta/meta.go` がブランドに合わせて更新される。
 - `.branding.env` が生成される（追跡しない）。
 
 ## ヘッダーの共通ルール
