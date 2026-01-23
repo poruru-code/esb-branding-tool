@@ -68,8 +68,12 @@ def test_resolve_brand_rejects_mismatch_in_check_mode(tmp_path) -> None:
 
 
 def test_resolve_brand_requires_config_in_check_mode(tmp_path) -> None:
+    assert resolve_brand("esb", tmp_path, check=True) == "esb"
+
+
+def test_resolve_brand_requires_input_in_check_mode(tmp_path) -> None:
     with pytest.raises(BrandingError):
-        resolve_brand("esb", tmp_path, check=True)
+        resolve_brand(None, tmp_path, check=True)
 
 
 def test_resolve_brand_requires_input(tmp_path) -> None:

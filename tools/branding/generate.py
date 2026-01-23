@@ -158,9 +158,9 @@ def resolve_brand(brand: str | None, root: Path, *, check: bool = False) -> str:
                 )
             # DO NOT auto-update branding.yaml when explicitly requested via --brand
         elif not config_brand:
-            if check:
-                raise BrandingError("brand missing in config/branding.yaml for --check")
             # DO NOT auto-create branding.yaml when explicitly requested via --brand
+            if check:
+                return brand_value
         return brand_value
     if config_brand:
         return config_brand
