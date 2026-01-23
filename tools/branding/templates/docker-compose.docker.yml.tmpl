@@ -63,7 +63,6 @@ services:
       - "${PORT_S3_MGMT:-9001}:9001" # Console
     volumes:
       - rustfs_data:/data/rustfs
-      - ./compose/config/lifecycle.yml:/app/config/lifecycle.yml:ro
     environment:
       - RUSTFS_VOLUMES=/data/rustfs
       - RUSTFS_ADDRESS=0.0.0.0:9000
@@ -73,13 +72,6 @@ services:
       - RUSTFS_CONSOLE_ADDRESS=0.0.0.0:9001
       - RUSTFS_DEDUPLICATION=${RUSTFS_DEDUPLICATION:-true}
       - RUSTFS_COMPRESSION=${RUSTFS_COMPRESSION:-auto}
-      - RUSTFS_LIFECYCLE_POLICY_PATH=/app/config/lifecycle.yml
-      - HTTP_PROXY
-      - HTTPS_PROXY
-      - NO_PROXY
-      - http_proxy
-      - https_proxy
-      - no_proxy
     healthcheck:
       test: [ "CMD", "sh", "-c", "curl -f --noproxy '*' http://127.0.0.1:9000/health" ]
       interval: 10s
@@ -102,12 +94,6 @@ services:
       - scylladb_data:/var/lib/scylla
     command: --smp 1 --memory ${SCYLLADB_MEMORY:-1}G --developer-mode 1 --alternator-port 8000 --alternator-address 0.0.0.0 --alternator-write-isolation always_use_lwt
     environment:
-      - HTTP_PROXY
-      - HTTPS_PROXY
-      - NO_PROXY
-      - http_proxy
-      - https_proxy
-      - no_proxy
     healthcheck:
       test: [ "CMD-SHELL", "cqlsh -e 'DESCRIBE KEYSPACES' || exit 1" ]
       interval: 10s
@@ -133,12 +119,6 @@ services:
       - "-storageDataPath=/victoria-logs-data"
       - "-retentionPeriod=7d"
     environment:
-      - HTTP_PROXY
-      - HTTPS_PROXY
-      - NO_PROXY
-      - http_proxy
-      - https_proxy
-      - no_proxy
     healthcheck:
       test: [ "CMD", "wget", "-q", "-Y", "off", "--spider", "http://127.0.0.1:9428/health" ]
       interval: 10s
@@ -175,6 +155,12 @@ services:
       - AWS_DEFAULT_REGION=us-east-1
       - AWS_ACCESS_KEY_ID=${RUSTFS_ACCESS_KEY:-{{SLUG}}}
       - AWS_SECRET_ACCESS_KEY=${RUSTFS_SECRET_KEY:-{{SLUG}}secret}
+      - HTTP_PROXY
+      - HTTPS_PROXY
+      - NO_PROXY
+      - http_proxy
+      - https_proxy
+      - no_proxy
     networks:
       external_network: {}
 
@@ -202,6 +188,12 @@ services:
     volumes:
       - ${CERT_DIR:-~/{{HOME_DIR}}/certs}:/app/config/ssl:ro
     environment:
+      - HTTP_PROXY
+      - HTTPS_PROXY
+      - NO_PROXY
+      - http_proxy
+      - https_proxy
+      - no_proxy
       # --- Required / Core Authentication (auto-generated if unset) ---
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:-}
       - X_API_KEY=${X_API_KEY:-}
@@ -243,12 +235,6 @@ services:
       - PAUSE_IDLE_SECONDS=${PAUSE_IDLE_SECONDS:-30}
 
       # --- System / Proxy ---
-      - HTTP_PROXY
-      - HTTPS_PROXY
-      - NO_PROXY
-      - http_proxy
-      - https_proxy
-      - no_proxy
       - GRPC_VERBOSITY=ERROR
 
       # --- Docker Mode Wiring ---
@@ -281,7 +267,6 @@ services:
       additional_contexts:
         meta: meta
       args:
-        IMAGE_PREFIX: {{SLUG}}
         OS_BASE_IMAGE: {{SLUG}}-os-base:latest
     container_name: ${PROJECT_NAME:-{{SLUG}}-${ENV:-default}}-agent
     cap_add: [NET_ADMIN, SYS_ADMIN]
