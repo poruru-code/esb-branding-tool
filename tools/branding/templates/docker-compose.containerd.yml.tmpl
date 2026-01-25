@@ -170,6 +170,7 @@ services:
       - AWS_DEFAULT_REGION=us-east-1
       - AWS_ACCESS_KEY_ID=${RUSTFS_ACCESS_KEY:-{{SLUG}}}
       - AWS_SECRET_ACCESS_KEY=${RUSTFS_SECRET_KEY:-{{SLUG}}secret}
+      - AGENT_RUNTIME=containerd
     networks:
       external_network: {}
 
@@ -191,7 +192,6 @@ services:
         IMAGE_RUNTIME: containerd
         COMPONENT: runtime-node
     container_name: ${PROJECT_NAME:-{{SLUG}}-${ENV:-default}}-runtime-node
-    entrypoint: /entrypoint.containerd.sh
     privileged: true
     ports:
       - "${PORT_AGENT_GRPC:-50051}:50051"
@@ -202,6 +202,8 @@ services:
     environment:
       - CNI_GW_IP=${DATA_PLANE_HOST:-10.88.0.1}
       - VHOST_VSOCK_REQUIRED=0
+      - AGENT_RUNTIME=containerd
+      - CONTAINERD_RUNTIME=${CONTAINERD_RUNTIME:-}
     volumes:
       - runtime_containerd_run:/run/containerd
       - runtime_containerd_lib:/var/lib/containerd
@@ -264,6 +266,7 @@ services:
       - CONTAINER_REGISTRY=registry:5010
       - CNI_SUBNET=${CNI_SUBNET:-}
       - AGENT_RUNTIME=containerd
+      - CONTAINERD_RUNTIME=${CONTAINERD_RUNTIME:-}
       - AGENT_GRPC_TLS_ENABLED=1
       - AGENT_GRPC_CERT_PATH=/app/config/ssl/server.crt
       - AGENT_GRPC_KEY_PATH=/app/config/ssl/server.key
@@ -305,6 +308,7 @@ services:
   gateway:
     env_file: config/defaults.env
     image: ${ESB_REGISTRY:-}{{SLUG}}-gateway:${ESB_TAG:-latest}-containerd
+    user: "0:0"
     build:
       context: .
       dockerfile: services/gateway/Dockerfile.containerd
@@ -330,7 +334,13 @@ services:
       s3-storage:
         condition: service_healthy
     volumes:
+      - ${WG_GATEWAY_CONF:-~/{{HOME_DIR}}/wireguard/gateway/wg0.conf}:/app/config/wireguard/wg0.conf:ro
+      - ./config/haproxy.gateway.cfg:/app/config/haproxy.gateway.cfg:ro
       - ${CERT_DIR:-~/{{HOME_DIR}}/certs}:/app/config/ssl:ro
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
     environment:
       # --- Required / Core Authentication (auto-generated if unset) ---
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:-}
@@ -348,8 +358,6 @@ services:
       - CONTAINERS_NETWORK=${NETWORK_EXTERNAL:-${PROJECT_NAME:-{{SLUG}}-${ENV:-default}}-external}
       - AUTH_ENDPOINT_PATH
       - PROJECT_NAME=${PROJECT_NAME:-{{SLUG}}-${ENV:-default}}
-      - IMAGE_TAG=containerd
-      - FUNCTION_IMAGE_PREFIX=registry:5010/
 
       # --- Tuning & Resilience (Pass-through) ---
       - AGENT_INVOKE_PROXY
@@ -376,6 +384,7 @@ services:
       - GRPC_VERBOSITY=ERROR
 
       # --- Containerd Mode Wiring ---
+      - AGENT_RUNTIME=containerd
       - AGENT_GRPC_ADDRESS=localhost:50051
       - AGENT_GRPC_TLS_ENABLED=1
       - AGENT_GRPC_TLS_CA_CERT_PATH=/app/config/ssl/rootCA.crt
