@@ -11,10 +11,16 @@ services:
     build:
       context: .
       dockerfile: services/common/Dockerfile.os-base
+      additional_contexts:
+        git_dir: ${GIT_DIR_CONTEXT:-.git}
+        git_common: ${GIT_COMMON_DIR_CONTEXT:-.git}
+        trace_tools: tools/traceability
       args:
         ROOT_CA_MOUNT_ID: root_ca
         ROOT_CA_CERT_FILENAME: ${ROOT_CA_CERT_FILENAME:-rootCA.crt}
         ROOT_CA_FINGERPRINT: ${ROOT_CA_FINGERPRINT:-}
+        COMPONENT: base
+        IMAGE_RUNTIME: shared
       secrets:
         - root_ca
 
@@ -24,10 +30,16 @@ services:
     build:
       context: .
       dockerfile: services/common/Dockerfile.python-base
+      additional_contexts:
+        git_dir: ${GIT_DIR_CONTEXT:-.git}
+        git_common: ${GIT_COMMON_DIR_CONTEXT:-.git}
+        trace_tools: tools/traceability
       args:
         ROOT_CA_MOUNT_ID: root_ca
         ROOT_CA_CERT_FILENAME: ${ROOT_CA_CERT_FILENAME:-rootCA.crt}
         ROOT_CA_FINGERPRINT: ${ROOT_CA_FINGERPRINT:-}
+        COMPONENT: base
+        IMAGE_RUNTIME: shared
       secrets:
         - root_ca
 
@@ -129,14 +141,19 @@ services:
   # ============================================
   provisioner:
     env_file: config/defaults.env
-    image: {{SLUG}}-provisioner:containerd
+    image: ${ESB_REGISTRY:-}{{SLUG}}-provisioner-containerd:${ESB_TAG:-latest}
     build:
       context: .
-      dockerfile: services/provisioner/Dockerfile
+      dockerfile: services/provisioner/Dockerfile.containerd
       additional_contexts:
         config: ${CONFIG_DIR:-services/gateway/config}
+        git_dir: ${GIT_DIR_CONTEXT:-.git}
+        git_common: ${GIT_COMMON_DIR_CONTEXT:-.git}
+        trace_tools: tools/traceability
       args:
-        IMAGE_PREFIX: ${IMAGE_PREFIX:-esb}
+        PYTHON_BASE_IMAGE: {{SLUG}}-python-base:latest
+        IMAGE_RUNTIME: containerd
+        COMPONENT: provisioner
     container_name: ${PROJECT_NAME:-{{SLUG}}-${ENV:-default}}-provisioner
     depends_on:
       database:
@@ -161,11 +178,18 @@ services:
   # ============================================
   runtime-node:
     env_file: config/defaults.env
+    image: ${ESB_REGISTRY:-}{{SLUG}}-runtime-node-containerd:${ESB_TAG:-latest}
     build:
       context: services/runtime-node
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.containerd
+      additional_contexts:
+        git_dir: ${GIT_DIR_CONTEXT:-.git}
+        git_common: ${GIT_COMMON_DIR_CONTEXT:-.git}
+        trace_tools: tools/traceability
       args:
         OS_BASE_IMAGE: {{SLUG}}-os-base:latest
+        IMAGE_RUNTIME: containerd
+        COMPONENT: runtime-node
     container_name: ${PROJECT_NAME:-{{SLUG}}-${ENV:-default}}-runtime-node
     entrypoint: /entrypoint.containerd.sh
     privileged: true
@@ -208,14 +232,19 @@ services:
   # ============================================
   agent:
     env_file: config/defaults.env
-    image: {{SLUG}}-agent:containerd
+    image: ${ESB_REGISTRY:-}{{SLUG}}-agent-containerd:${ESB_TAG:-latest}
     build:
       context: services/agent
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.containerd
       additional_contexts:
         meta: meta
+        git_dir: ${GIT_DIR_CONTEXT:-.git}
+        git_common: ${GIT_COMMON_DIR_CONTEXT:-.git}
+        trace_tools: tools/traceability
       args:
         OS_BASE_IMAGE: {{SLUG}}-os-base:latest
+        IMAGE_RUNTIME: containerd
+        COMPONENT: agent
     container_name: ${PROJECT_NAME:-{{SLUG}}-${ENV:-default}}-agent
     cap_add: [NET_ADMIN, SYS_ADMIN]
     network_mode: "service:runtime-node"
@@ -275,17 +304,22 @@ services:
   # ============================================
   gateway:
     env_file: config/defaults.env
-    image: {{SLUG}}-gateway:containerd
+    image: ${ESB_REGISTRY:-}{{SLUG}}-gateway-containerd:${ESB_TAG:-latest}
     build:
       context: .
-      dockerfile: services/gateway/Dockerfile
+      dockerfile: services/gateway/Dockerfile.containerd
       additional_contexts:
         config: ${CONFIG_DIR:-services/gateway/config}
+        git_dir: ${GIT_DIR_CONTEXT:-.git}
+        git_common: ${GIT_COMMON_DIR_CONTEXT:-.git}
+        trace_tools: tools/traceability
       args:
-        IMAGE_PREFIX: ${IMAGE_PREFIX:-esb}
+        PYTHON_BASE_IMAGE: {{SLUG}}-python-base:latest
         SERVICE_USER: ${PROJECT_NAME:-{{SLUG}}-${ENV:-default}}
         SERVICE_UID: ${RUN_UID:-1000}
         SERVICE_GID: ${RUN_GID:-1000}
+        IMAGE_RUNTIME: containerd
+        COMPONENT: gateway
     container_name: ${PROJECT_NAME:-{{SLUG}}-${ENV:-default}}-gateway
     network_mode: "service:runtime-node"
     depends_on:
