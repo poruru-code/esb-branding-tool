@@ -47,6 +47,7 @@ TEMPLATES: tuple[TemplateSpec, ...] = (
     TemplateSpec(
         "tools/branding/templates/config/defaults.env.tmpl", "config/defaults.env"
     ),
+    TemplateSpec("tools/branding/templates/Makefile.tmpl", "Makefile"),
     TemplateSpec("tools/branding/templates/meta/meta.go.tmpl", "meta/meta.go"),
     TemplateSpec(
         "tools/branding/templates/docker-compose.docker.yml.tmpl",
