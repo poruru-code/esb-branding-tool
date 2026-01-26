@@ -19,8 +19,7 @@ services:
         ROOT_CA_MOUNT_ID: root_ca
         ROOT_CA_CERT_FILENAME: ${ROOT_CA_CERT_FILENAME:-rootCA.crt}
         ROOT_CA_FINGERPRINT: ${ROOT_CA_FINGERPRINT:-}
-        COMPONENT: base
-        IMAGE_RUNTIME: shared
+
       secrets:
         - root_ca
 
@@ -38,8 +37,7 @@ services:
         ROOT_CA_MOUNT_ID: root_ca
         ROOT_CA_CERT_FILENAME: ${ROOT_CA_CERT_FILENAME:-rootCA.crt}
         ROOT_CA_FINGERPRINT: ${ROOT_CA_FINGERPRINT:-}
-        COMPONENT: base
-        IMAGE_RUNTIME: shared
+
       secrets:
         - root_ca
 
@@ -141,10 +139,10 @@ services:
   # ============================================
   provisioner:
     env_file: config/defaults.env
-    image: ${ESB_REGISTRY:-}{{SLUG}}-provisioner:${ESB_TAG:-latest}-containerd
+    image: ${ESB_REGISTRY:-}{{SLUG}}-provisioner:${ESB_TAG:-latest}
     build:
       context: .
-      dockerfile: services/provisioner/Dockerfile.containerd
+      dockerfile: services/provisioner/Dockerfile
       additional_contexts:
         config: ${CONFIG_DIR:-services/gateway/config}
         git_dir: ${GIT_DIR_CONTEXT:-.git}
@@ -152,8 +150,7 @@ services:
         trace_tools: tools/traceability
       args:
         PYTHON_BASE_IMAGE: {{SLUG}}-python-base:latest
-        IMAGE_RUNTIME: containerd
-        COMPONENT: provisioner
+
     container_name: ${PROJECT_NAME:-{{SLUG}}-${ENV:-default}}-provisioner
     depends_on:
       database:
@@ -189,8 +186,7 @@ services:
         trace_tools: tools/traceability
       args:
         OS_BASE_IMAGE: {{SLUG}}-os-base:latest
-        IMAGE_RUNTIME: containerd
-        COMPONENT: runtime-node
+
     container_name: ${PROJECT_NAME:-{{SLUG}}-${ENV:-default}}-runtime-node
     entrypoint: /entrypoint.firecracker.sh
     privileged: true
@@ -246,8 +242,7 @@ services:
         trace_tools: tools/traceability
       args:
         OS_BASE_IMAGE: {{SLUG}}-os-base:latest
-        IMAGE_RUNTIME: containerd
-        COMPONENT: agent
+
     container_name: ${PROJECT_NAME:-{{SLUG}}-${ENV:-default}}-agent
     cap_add: [NET_ADMIN, SYS_ADMIN]
     network_mode: "service:runtime-node"
@@ -323,8 +318,8 @@ services:
         SERVICE_USER: ${PROJECT_NAME:-{{SLUG}}-${ENV:-default}}
         SERVICE_UID: ${RUN_UID:-1000}
         SERVICE_GID: ${RUN_GID:-1000}
-        IMAGE_RUNTIME: containerd
-        COMPONENT: gateway
+        SERVICE_GID: ${RUN_GID:-1000}
+
     container_name: ${PROJECT_NAME:-{{SLUG}}-${ENV:-default}}-gateway
     network_mode: "service:runtime-node"
     depends_on:
