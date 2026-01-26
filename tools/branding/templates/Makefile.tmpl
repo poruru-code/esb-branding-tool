@@ -19,12 +19,12 @@ CST_CONFIG_DIR := config/container-structure-test
 
 OS_BASE_IMAGE ?= $(BRAND_SLUG)-os-base:latest
 PYTHON_BASE_IMAGE ?= $(BRAND_SLUG)-python-base:latest
-GATEWAY_IMAGE ?= $(BRAND_SLUG)-gateway:$(IMAGE_TAG)-docker
-GATEWAY_FC_IMAGE ?= $(BRAND_SLUG)-gateway:$(IMAGE_TAG)-containerd
-AGENT_IMAGE ?= $(BRAND_SLUG)-agent:$(IMAGE_TAG)-docker
-AGENT_CONTAINERD_IMAGE ?= $(BRAND_SLUG)-agent:$(IMAGE_TAG)-containerd
-RUNTIME_NODE_IMAGE ?= $(BRAND_SLUG)-runtime-node:$(IMAGE_TAG)-containerd
-RUNTIME_NODE_FC_IMAGE ?= $(BRAND_SLUG)-runtime-node:$(IMAGE_TAG)-containerd
+GATEWAY_IMAGE ?= $(BRAND_SLUG)-gateway-docker:$(IMAGE_TAG)
+GATEWAY_FC_IMAGE ?= $(BRAND_SLUG)-gateway-containerd:$(IMAGE_TAG)
+AGENT_IMAGE ?= $(BRAND_SLUG)-agent-docker:$(IMAGE_TAG)
+AGENT_CONTAINERD_IMAGE ?= $(BRAND_SLUG)-agent-containerd:$(IMAGE_TAG)
+RUNTIME_NODE_IMAGE ?= $(BRAND_SLUG)-runtime-node-containerd:$(IMAGE_TAG)
+RUNTIME_NODE_FC_IMAGE ?= $(BRAND_SLUG)-runtime-node-containerd:$(IMAGE_TAG)
 
 CST_RUN := docker run --rm \
 	-v /var/run/docker.sock:/var/run/docker.sock \
