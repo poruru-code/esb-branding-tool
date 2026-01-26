@@ -175,7 +175,7 @@ services:
   # ============================================
   gateway:
     env_file: config/defaults.env
-    image: ${ESB_REGISTRY:-}{{SLUG}}-gateway:${ESB_TAG:-latest}-docker
+    image: ${ESB_REGISTRY:-}{{SLUG}}-gateway-docker:${ESB_TAG:-latest}
     build:
       context: .
       dockerfile: services/gateway/Dockerfile.docker
@@ -263,7 +263,7 @@ services:
   # ============================================
   agent:
     env_file: config/defaults.env
-    image: ${ESB_REGISTRY:-}{{SLUG}}-agent:${ESB_TAG:-latest}-docker
+    image: ${ESB_REGISTRY:-}{{SLUG}}-agent-docker:${ESB_TAG:-latest}
     build:
       context: services/agent
       dockerfile: Dockerfile.docker

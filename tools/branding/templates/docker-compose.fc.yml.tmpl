@@ -175,7 +175,7 @@ services:
   # ============================================
   runtime-node:
     env_file: config/defaults.env
-    image: ${ESB_REGISTRY:-}{{SLUG}}-runtime-node:${ESB_TAG:-latest}-containerd
+    image: ${ESB_REGISTRY:-}{{SLUG}}-runtime-node-containerd:${ESB_TAG:-latest}
     build:
       context: services/runtime-node
       dockerfile: Dockerfile.containerd
@@ -230,7 +230,7 @@ services:
   # ============================================
   agent:
     env_file: config/defaults.env
-    image: ${ESB_REGISTRY:-}{{SLUG}}-agent:${ESB_TAG:-latest}-containerd
+    image: ${ESB_REGISTRY:-}{{SLUG}}-agent-containerd:${ESB_TAG:-latest}
     build:
       context: services/agent
       dockerfile: Dockerfile.containerd
@@ -302,7 +302,7 @@ services:
   # ============================================
   gateway:
     env_file: config/defaults.env
-    image: ${ESB_REGISTRY:-}{{SLUG}}-gateway:${ESB_TAG:-latest}-containerd
+    image: ${ESB_REGISTRY:-}{{SLUG}}-gateway-containerd:${ESB_TAG:-latest}
     user: "0:0"
     build:
       context: .
