@@ -48,6 +48,10 @@ TEMPLATES: tuple[TemplateSpec, ...] = (
     TemplateSpec(
         "tools/branding/templates/config/defaults.env.tmpl", "config/defaults.env"
     ),
+    TemplateSpec(
+        "tools/branding/templates/tools/cert-gen/config.toml.tmpl",
+        "tools/cert-gen/config.toml",
+    ),
     TemplateSpec("tools/branding/templates/Makefile.tmpl", "Makefile"),
     TemplateSpec("tools/branding/templates/meta/meta.go.tmpl", "meta/meta.go"),
     TemplateSpec(
