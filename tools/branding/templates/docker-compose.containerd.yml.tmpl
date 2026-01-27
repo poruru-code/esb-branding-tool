@@ -12,7 +12,7 @@ services:
       context: .
       dockerfile: services/common/Dockerfile.os-base
       additional_contexts:
-        meta: ${META_CONTEXT:-.esb/meta}
+        meta: ${META_CONTEXT:-{{OUTPUT_DIR}}/meta}
       args:
         ROOT_CA_MOUNT_ID: root_ca
         ROOT_CA_CERT_FILENAME: ${ROOT_CA_CERT_FILENAME:-rootCA.crt}
@@ -28,7 +28,7 @@ services:
       context: .
       dockerfile: services/common/Dockerfile.python-base
       additional_contexts:
-        meta: ${META_CONTEXT:-.esb/meta}
+        meta: ${META_CONTEXT:-{{OUTPUT_DIR}}/meta}
       args:
         ROOT_CA_MOUNT_ID: root_ca
         ROOT_CA_CERT_FILENAME: ${ROOT_CA_CERT_FILENAME:-rootCA.crt}
@@ -139,7 +139,7 @@ services:
       context: .
       dockerfile: services/provisioner/Dockerfile
       additional_contexts:
-        meta: ${META_CONTEXT:-.esb/meta}
+        meta: ${META_CONTEXT:-{{OUTPUT_DIR}}/meta}
         config: ${CONFIG_DIR:-services/gateway/config}
       args:
         PYTHON_BASE_IMAGE: {{SLUG}}-python-base:latest
@@ -174,7 +174,7 @@ services:
       context: services/runtime-node
       dockerfile: Dockerfile.containerd
       additional_contexts:
-        meta: ${META_CONTEXT:-.esb/meta}
+        meta: ${META_CONTEXT:-{{OUTPUT_DIR}}/meta}
       args:
         OS_BASE_IMAGE: {{SLUG}}-os-base:latest
 
@@ -226,7 +226,7 @@ services:
       context: services/agent
       dockerfile: Dockerfile.containerd
       additional_contexts:
-        meta: ${META_CONTEXT:-.esb/meta}
+        meta: ${META_CONTEXT:-{{OUTPUT_DIR}}/meta}
         meta_module: ${META_MODULE_CONTEXT:-meta}
       args:
         OS_BASE_IMAGE: {{SLUG}}-os-base:latest
@@ -297,7 +297,7 @@ services:
       context: .
       dockerfile: services/gateway/Dockerfile.containerd
       additional_contexts:
-        meta: ${META_CONTEXT:-.esb/meta}
+        meta: ${META_CONTEXT:-{{OUTPUT_DIR}}/meta}
         config: ${CONFIG_DIR:-services/gateway/config}
       args:
         PYTHON_BASE_IMAGE: {{SLUG}}-python-base:latest
