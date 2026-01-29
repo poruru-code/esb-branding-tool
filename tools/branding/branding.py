@@ -21,7 +21,6 @@ class Branding:
     cli_name: str
     slug: str
     env_prefix: str
-    image_prefix: str
     label_prefix: str
     paths: dict[str, str]
     root_ca: dict[str, str]
@@ -33,7 +32,6 @@ def derive_branding(brand: str) -> Branding:
     slug = _normalize_slug(brand)
     env_prefix = _normalize_env_prefix(brand)
     cli_name = slug
-    image_prefix = slug
     label_prefix = f"com.{slug}"
 
     paths = {
@@ -63,14 +61,12 @@ def derive_branding(brand: str) -> Branding:
     _validate_pattern("cli_name", cli_name, _SLUG_RE)
     _validate_pattern("slug", slug, _SLUG_RE)
     _validate_pattern("env_prefix", env_prefix, _ENV_PREFIX_RE)
-    _validate_pattern("image_prefix", image_prefix, _SLUG_RE)
     _validate_pattern("label_prefix", label_prefix, _LABEL_PREFIX_RE)
 
     return Branding(
         cli_name=cli_name,
         slug=slug,
         env_prefix=env_prefix,
-        image_prefix=image_prefix,
         label_prefix=label_prefix,
         paths=paths,
         root_ca=root_ca,
@@ -85,7 +81,6 @@ def build_context(branding: Branding) -> dict[str, str]:
         "SLUG": branding.slug,
         "ENV_PREFIX": branding.env_prefix,
         "ENV_PREFIX_VAR": env_prefix_var,
-        "IMAGE_PREFIX": branding.image_prefix,
         "LABEL_PREFIX": branding.label_prefix,
         "HOME_DIR": branding.paths["home_dir"],
         "OUTPUT_DIR": branding.paths["output_dir"],

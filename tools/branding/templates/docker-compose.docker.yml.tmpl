@@ -3,6 +3,22 @@
 
 services:
   # ============================================
+  # Build Dependencies (Metadata)
+  # ============================================
+  meta-builder:
+    image: {{SLUG}}-meta:debug
+    build:
+      context: .
+      dockerfile: tools/traceability/Dockerfile.meta
+      target: meta
+      additional_contexts:
+        git_dir: ./.git
+        git_common: ./.git
+        trace_tools: ./tools/traceability
+    command: ["/bin/sh", "-c", "exit 0"]
+    restart: "no"
+
+  # ============================================
   # Base Images (Debian 12)
   # ============================================
   os-base:
@@ -12,11 +28,15 @@ services:
       context: services/common
       dockerfile: Dockerfile.os-base
       additional_contexts:
-        meta: ${META_CONTEXT:-{{OUTPUT_DIR}}/meta}
+        meta: service:meta-builder
       args:
         ROOT_CA_MOUNT_ID: root_ca
         ROOT_CA_CERT_FILENAME: ${ROOT_CA_CERT_FILENAME:-rootCA.crt}
         ROOT_CA_FINGERPRINT: ${ROOT_CA_FINGERPRINT:-}
+      cache_from:
+        - type=local,src={{OUTPUT_DIR}}/buildx-cache/base
+      cache_to:
+        - type=local,dest={{OUTPUT_DIR}}/buildx-cache/base,mode=max
 
       secrets:
         - root_ca
@@ -28,11 +48,15 @@ services:
       context: services/common
       dockerfile: Dockerfile.python-base
       additional_contexts:
-        meta: ${META_CONTEXT:-{{OUTPUT_DIR}}/meta}
+        meta: service:meta-builder
       args:
         ROOT_CA_MOUNT_ID: root_ca
         ROOT_CA_CERT_FILENAME: ${ROOT_CA_CERT_FILENAME:-rootCA.crt}
         ROOT_CA_FINGERPRINT: ${ROOT_CA_FINGERPRINT:-}
+      cache_from:
+        - type=local,src={{OUTPUT_DIR}}/buildx-cache/base
+      cache_to:
+        - type=local,dest={{OUTPUT_DIR}}/buildx-cache/base,mode=max
       secrets:
         - root_ca
 
@@ -139,14 +163,17 @@ services:
       context: services/provisioner
       dockerfile: Dockerfile
       additional_contexts:
-        meta: ${META_CONTEXT:-{{OUTPUT_DIR}}/meta}
+        meta: service:meta-builder
         config: ${CONFIG_DIR:-services/gateway/config}
         generator_assets: ${GENERATOR_ASSETS_CONTEXT:-cli/internal/generator/assets/site-packages}
+        python-base: service:python-base
       args:
-        PYTHON_BASE_IMAGE: {{SLUG}}-python-base:latest
+        PYTHON_BASE_IMAGE: python-base
 
     container_name: ${PROJECT_NAME:-{{SLUG}}-${ENV:-default}}-provisioner
     depends_on:
+      python-base:
+        condition: service_completed_successfully
       database:
         condition: service_healthy
       s3-storage:
@@ -175,11 +202,12 @@ services:
       context: services/gateway
       dockerfile: Dockerfile.docker
       additional_contexts:
-        meta: ${META_CONTEXT:-{{OUTPUT_DIR}}/meta}
+        meta: service:meta-builder
         config: ${CONFIG_DIR:-services/gateway/config}
         common: ${COMMON_CONTEXT:-services/common}
+        python-base: service:python-base
       args:
-        PYTHON_BASE_IMAGE: {{SLUG}}-python-base:latest
+        PYTHON_BASE_IMAGE: python-base
         SERVICE_USER: ${PROJECT_NAME:-{{SLUG}}-${ENV:-default}}
         SERVICE_UID: ${RUN_UID:-1000}
         SERVICE_GID: ${RUN_GID:-1000}
@@ -245,6 +273,8 @@ services:
       - DYNAMODB_ENDPOINT=http://database:8000
       - GATEWAY_VICTORIALOGS_URL=http://victorialogs:9428
     depends_on:
+      python-base:
+        condition: service_completed_successfully
       provisioner:
         condition: service_completed_successfully
       database:
@@ -262,12 +292,16 @@ services:
       context: services/agent
       dockerfile: Dockerfile.docker
       additional_contexts:
-        meta: ${META_CONTEXT:-{{OUTPUT_DIR}}/meta}
+        meta: service:meta-builder
         meta_module: ${META_MODULE_CONTEXT:-meta}
+        os-base: service:os-base
       args:
-        OS_BASE_IMAGE: {{SLUG}}-os-base:latest
+        OS_BASE_IMAGE: os-base
 
     container_name: ${PROJECT_NAME:-{{SLUG}}-${ENV:-default}}-agent
+    depends_on:
+      os-base:
+        condition: service_completed_successfully
     cap_add: [NET_ADMIN, SYS_ADMIN]
     environment:
       - LOG_LEVEL=${LOG_LEVEL:-INFO}

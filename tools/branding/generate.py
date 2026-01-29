@@ -66,6 +66,10 @@ TEMPLATES: tuple[TemplateSpec, ...] = (
         "tools/branding/templates/docker-compose.fc-node.yml.tmpl",
         "docker-compose.fc-node.yml",
     ),
+    TemplateSpec(
+        "tools/branding/templates/docker-bake.hcl.tmpl",
+        "docker-bake.hcl",
+    ),
 )
 
 _PLACEHOLDER_RE = re.compile(r"{{\s*([A-Z0-9_]+)\s*}}")
@@ -449,7 +453,6 @@ def write_branding_env(root: Path, branding: Branding, brand_name: str) -> Path:
         ("BRANDING_CLI_NAME", branding.cli_name),
         ("BRANDING_SLUG", branding.slug),
         ("BRANDING_ENV_PREFIX", branding.env_prefix),
-        ("BRANDING_IMAGE_PREFIX", branding.image_prefix),
         ("BRANDING_LABEL_PREFIX", branding.label_prefix),
     )
     lines = [
