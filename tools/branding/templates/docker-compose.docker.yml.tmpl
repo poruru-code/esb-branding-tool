@@ -22,7 +22,6 @@ services:
   # Base Images (Debian 12)
   # ============================================
   os-base:
-    env_file: config/defaults.env
     image: {{SLUG}}-os-base:latest
     build:
       context: services/common
@@ -42,7 +41,6 @@ services:
         - root_ca
 
   python-base:
-    env_file: config/defaults.env
     image: {{SLUG}}-python-base:latest
     build:
       context: services/common
@@ -64,7 +62,6 @@ services:
   # Permission Helper (for RustFS)
   # ============================================
   permission-helper:
-    env_file: config/defaults.env
     image: alpine
     container_name: ${PROJECT_NAME:-{{SLUG}}-${ENV:-default}}-permission-helper
     volumes:
@@ -79,7 +76,6 @@ services:
   # RustFS (S3 Compatible Storage)
   # ============================================
   s3-storage:
-    env_file: config/defaults.env
     image: rustfs/rustfs:latest
     container_name: ${PROJECT_NAME:-{{SLUG}}-${ENV:-default}}-s3-storage
     depends_on:
@@ -112,7 +108,6 @@ services:
   # ScyllaDB (DynamoDB Compatible DB)
   # ============================================
   database:
-    env_file: config/defaults.env
     image: scylladb/scylla:latest
     container_name: ${PROJECT_NAME:-{{SLUG}}-${ENV:-default}}-database
     ports:
@@ -134,7 +129,6 @@ services:
   # VictoriaLogs
   # ============================================
   victorialogs:
-    env_file: config/defaults.env
     image: victoriametrics/victoria-logs:latest
     container_name: ${PROJECT_NAME:-{{SLUG}}-${ENV:-default}}-victorialogs
     ports:
@@ -157,7 +151,6 @@ services:
   # Provisioner (Runtime Resource Initialization)
   # ============================================
   provisioner:
-    env_file: config/defaults.env
     image: ${ESB_REGISTRY:-}{{SLUG}}-provisioner:${ESB_TAG:-latest}
     build:
       context: services/provisioner
@@ -196,7 +189,6 @@ services:
   # API Gateway (Facade)
   # ============================================
   gateway:
-    env_file: config/defaults.env
     image: ${ESB_REGISTRY:-}{{SLUG}}-gateway-docker:${ESB_TAG:-latest}
     build:
       context: services/gateway
@@ -208,7 +200,7 @@ services:
         python-base: service:python-base
       args:
         PYTHON_BASE_IMAGE: python-base
-        SERVICE_USER: ${PROJECT_NAME:-{{SLUG}}-${ENV:-default}}
+        SERVICE_USER: {{SLUG}}
         SERVICE_UID: ${RUN_UID:-1000}
         SERVICE_GID: ${RUN_GID:-1000}
 
@@ -286,7 +278,6 @@ services:
   # Agent (Docker Runtime)
   # ============================================
   agent:
-    env_file: config/defaults.env
     image: ${ESB_REGISTRY:-}{{SLUG}}-agent-docker:${ESB_TAG:-latest}
     build:
       context: services/agent
@@ -305,6 +296,7 @@ services:
     cap_add: [NET_ADMIN, SYS_ADMIN]
     environment:
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - ESB_TAG=${ESB_TAG:-latest}
       - PORT=50051
       - CONTAINER_REGISTRY=${CONTAINER_REGISTRY:-}
       - CNI_SUBNET=${CNI_SUBNET:-}
