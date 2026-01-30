@@ -35,7 +35,6 @@ target "os-base" {
   tags = ["{{SLUG}}-os-base:latest"]
   output = ["type=docker"]
   cache-from = ["type=local,src={{OUTPUT_DIR}}/buildx-cache/base"]
-  cache-to   = ["type=local,dest={{OUTPUT_DIR}}/buildx-cache/base,mode=max"]
 }
 
 target "python-base" {
@@ -47,7 +46,6 @@ target "python-base" {
   tags = ["{{SLUG}}-python-base:latest"]
   output = ["type=docker"]
   cache-from = ["type=local,src={{OUTPUT_DIR}}/buildx-cache/base"]
-  cache-to   = ["type=local,dest={{OUTPUT_DIR}}/buildx-cache/base,mode=max"]
 }
 
 group "base-images" {
