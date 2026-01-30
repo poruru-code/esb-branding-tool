@@ -147,7 +147,7 @@ services:
   # Provisioner (Runtime Resource Initialization)
   # ============================================
   provisioner:
-    image: ${ESB_REGISTRY:-}{{SLUG}}-provisioner:${ESB_TAG:-latest}
+    image: ${ESB_REGISTRY:-127.0.0.1:5010/}{{SLUG}}-provisioner:${ESB_TAG:-latest}
     build:
       context: services/provisioner
       dockerfile: Dockerfile
@@ -185,7 +185,7 @@ services:
   # API Gateway (Facade)
   # ============================================
   gateway:
-    image: ${ESB_REGISTRY:-}{{SLUG}}-gateway-docker:${ESB_TAG:-latest}
+    image: ${ESB_REGISTRY:-127.0.0.1:5010/}{{SLUG}}-gateway-docker:${ESB_TAG:-latest}
     build:
       context: services/gateway
       dockerfile: Dockerfile.docker
@@ -274,7 +274,7 @@ services:
   # Agent (Docker Runtime)
   # ============================================
   agent:
-    image: ${ESB_REGISTRY:-}{{SLUG}}-agent-docker:${ESB_TAG:-latest}
+    image: ${ESB_REGISTRY:-127.0.0.1:5010/}{{SLUG}}-agent-docker:${ESB_TAG:-latest}
     build:
       context: services/agent
       dockerfile: Dockerfile.docker
@@ -289,12 +289,14 @@ services:
     depends_on:
       os-base:
         condition: service_completed_successfully
+      registry:
+        condition: service_healthy
     cap_add: [NET_ADMIN, SYS_ADMIN]
     environment:
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - ESB_TAG=${ESB_TAG:-latest}
       - PORT=50051
-      - CONTAINER_REGISTRY=${CONTAINER_REGISTRY:-}
+      - CONTAINER_REGISTRY=${CONTAINER_REGISTRY:-127.0.0.1:5010}
       - CNI_SUBNET=${CNI_SUBNET:-}
       - AGENT_RUNTIME=docker
       - AGENT_GRPC_TLS_ENABLED=1
@@ -313,10 +315,36 @@ services:
     command: ["/app/agent"]
     restart: unless-stopped
 
+  # ============================================
+  # Registry (Local OCI)
+  # ============================================
+  registry:
+    image: registry:2
+    container_name: ${PROJECT_NAME:-{{SLUG}}-${ENV:-default}}-registry
+    ports:
+      - "${PORT_REGISTRY:-5010}:5010"
+    volumes:
+      - registry_data:/var/lib/registry
+      - ${CERT_DIR:-~/{{HOME_DIR}}/certs}:/certs:ro
+    environment:
+      REGISTRY_HTTP_ADDR: 0.0.0.0:5010
+      REGISTRY_HTTP_TLS_CERTIFICATE: /certs/server.crt
+      REGISTRY_HTTP_TLS_KEY: /certs/server.key
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-Y", "off", "--spider", "--no-check-certificate", "https://127.0.0.1:5010/v2/"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    restart: unless-stopped
+    networks:
+      - external_network
+
 volumes:
   scylladb_data:
   rustfs_data:
   victorialogs_data:
+  registry_data:
 
 secrets:
   root_ca:
