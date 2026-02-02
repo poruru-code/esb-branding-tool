@@ -67,6 +67,10 @@ TEMPLATES: tuple[TemplateSpec, ...] = (
         "docker-compose.fc-node.yml",
     ),
     TemplateSpec(
+        "tools/branding/templates/docker-compose.infra.yml.tmpl",
+        "docker-compose.infra.yml",
+    ),
+    TemplateSpec(
         "tools/branding/templates/docker-bake.hcl.tmpl",
         "docker-bake.hcl",
     ),
