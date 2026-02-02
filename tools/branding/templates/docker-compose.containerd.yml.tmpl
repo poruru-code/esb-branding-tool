@@ -3,54 +3,40 @@
 
 services:
   # ============================================
-  # Build Dependencies (Metadata)
-  # ============================================
-  meta-builder:
-    image: {{SLUG}}-meta:debug
-    build:
-      context: .
-      dockerfile: tools/traceability/Dockerfile.meta
-      target: meta
-      additional_contexts:
-        git_dir: ./.git
-        git_common: ./.git
-        trace_tools: ./tools/traceability
-    command: ["/bin/sh", "-c", "exit 0"]
-    restart: "no"
-
-  # ============================================
   # Base Images (Debian 12)
   # ============================================
   os-base:
     image: {{SLUG}}-os-base:latest
+    pull_policy: never
     build:
       context: services/common
       dockerfile: Dockerfile.os-base
-      additional_contexts:
-        meta: service:meta-builder
       args:
         ROOT_CA_MOUNT_ID: root_ca
         ROOT_CA_CERT_FILENAME: ${ROOT_CA_CERT_FILENAME:-rootCA.crt}
         ROOT_CA_FINGERPRINT: ${ROOT_CA_FINGERPRINT:-}
       cache_from:
-        - type=local,src={{OUTPUT_DIR}}/buildx-cache/base
+        - type=local,src=${BUILDX_CACHE_DIR:-{{OUTPUT_DIR}}/buildx-cache/base}
+      cache_to:
+        - type=local,dest=${BUILDX_CACHE_DIR:-{{OUTPUT_DIR}}/buildx-cache/base},mode=max
 
       secrets:
         - root_ca
 
   python-base:
     image: {{SLUG}}-python-base:latest
+    pull_policy: never
     build:
       context: services/common
       dockerfile: Dockerfile.python-base
-      additional_contexts:
-        meta: service:meta-builder
       args:
         ROOT_CA_MOUNT_ID: root_ca
         ROOT_CA_CERT_FILENAME: ${ROOT_CA_CERT_FILENAME:-rootCA.crt}
         ROOT_CA_FINGERPRINT: ${ROOT_CA_FINGERPRINT:-}
       cache_from:
-        - type=local,src={{OUTPUT_DIR}}/buildx-cache/base
+        - type=local,src=${BUILDX_CACHE_DIR:-{{OUTPUT_DIR}}/buildx-cache/base}
+      cache_to:
+        - type=local,dest=${BUILDX_CACHE_DIR:-{{OUTPUT_DIR}}/buildx-cache/base},mode=max
       secrets:
         - root_ca
 
@@ -62,9 +48,12 @@ services:
     container_name: ${PROJECT_NAME:-{{SLUG}}-${ENV:-default}}-permission-helper
     volumes:
       - rustfs_data:/data/rustfs
+      - ${CONFIG_DIR:-{{SLUG}}-runtime-config}:/data/runtime-config
     command: >
       sh -c "
-        chown -R 10001:10001 /data/rustfs 2>/dev/null || true && echo 'RustFS permissions fixed'
+        chown -R 10001:10001 /data/rustfs 2>/dev/null || true && \
+        chown -R ${RUN_UID:-1000}:${RUN_GID:-1000} /data/runtime-config 2>/dev/null || true && \
+        echo 'Volume permissions fixed'
       "
     restart: "no"
 
@@ -147,19 +136,21 @@ services:
   # Provisioner (Runtime Resource Initialization)
   # ============================================
   provisioner:
-    image: ${ESB_REGISTRY:-}{{SLUG}}-provisioner:${ESB_TAG:-latest}
+    image: ${ESB_REGISTRY:-registry:5010/}{{SLUG}}-provisioner:${ESB_TAG:-latest}
+    pull_policy: never
     build:
       context: services/provisioner
       dockerfile: Dockerfile
       additional_contexts:
-        meta: service:meta-builder
-        config: ${CONFIG_DIR:-services/gateway/config}
+        config: ${CONFIG_DIR:-services/gateway/seed-config}
         generator_assets: ${GENERATOR_ASSETS_CONTEXT:-cli/internal/generator/assets/site-packages}
         python-base: service:python-base
       args:
         PYTHON_BASE_IMAGE: python-base
 
     container_name: ${PROJECT_NAME:-{{SLUG}}-${ENV:-default}}-provisioner
+    profiles:
+      - deploy
     depends_on:
       database:
         condition: service_healthy
@@ -178,17 +169,19 @@ services:
       - AGENT_RUNTIME=containerd
     networks:
       external_network: {}
+    volumes:
+      - ${CONFIG_DIR:-{{SLUG}}-runtime-config}:/app/runtime-config
 
   # ============================================
   # Runtime Node (Containerd Host Container)
   # ============================================
   runtime-node:
-    image: ${ESB_REGISTRY:-}{{SLUG}}-runtime-node-containerd:${ESB_TAG:-latest}
+    image: ${ESB_REGISTRY:-registry:5010/}{{SLUG}}-runtime-node-containerd:${ESB_TAG:-latest}
+    pull_policy: never
     build:
       context: services/runtime-node
       dockerfile: Dockerfile.containerd
       additional_contexts:
-        meta: service:meta-builder
         os-base: service:os-base
       args:
         OS_BASE_IMAGE: os-base
@@ -215,6 +208,8 @@ services:
       interval: 5s
       retries: 10
     restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   # ============================================
   # coredns (Local DNS for Lambda VMs)
@@ -234,12 +229,12 @@ services:
   # Agent (Containerd Runtime)
   # ============================================
   agent:
-    image: ${ESB_REGISTRY:-}{{SLUG}}-agent-containerd:${ESB_TAG:-latest}
+    image: ${ESB_REGISTRY:-registry:5010/}{{SLUG}}-agent-containerd:${ESB_TAG:-latest}
+    pull_policy: never
     build:
       context: services/agent
       dockerfile: Dockerfile.containerd
       additional_contexts:
-        meta: service:meta-builder
         meta_module: ${META_MODULE_CONTEXT:-meta}
         os-base: service:os-base
       args:
@@ -251,7 +246,6 @@ services:
     pid: "service:runtime-node"
     depends_on:
       runtime-node: { condition: service_healthy }
-      registry: { condition: service_healthy }
     volumes:
       - runtime_containerd_run:/run/containerd
       - runtime_containerd_lib:/var/lib/containerd
@@ -262,7 +256,9 @@ services:
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - ESB_TAG=${ESB_TAG:-latest}
       - PORT=50051
-      - CONTAINER_REGISTRY=registry:5010
+      - CONTAINER_REGISTRY=${CONTAINER_REGISTRY:-registry:5010}
+      - CONTAINER_REGISTRY_INSECURE=${CONTAINER_REGISTRY_INSECURE:-1}
+      - IMAGE_PULL_POLICY=always
       - CNI_SUBNET=${CNI_SUBNET:-}
       - AGENT_RUNTIME=containerd
       - CONTAINERD_RUNTIME=${CONTAINERD_RUNTIME:-}
@@ -275,43 +271,20 @@ services:
     command: ["/app/agent"]
     restart: unless-stopped
 
-  # ============================================
-  # Registry (Local OCI)
-  # ============================================
-  registry:
-    image: registry:2
-    container_name: ${PROJECT_NAME:-{{SLUG}}-${ENV:-default}}-registry
-    ports:
-      - "${PORT_REGISTRY:-5010}:5010"
-    volumes:
-      - registry_data:/var/lib/registry
-      - ${CERT_DIR:-~/{{HOME_DIR}}/certs}:/certs:ro
-    environment:
-      REGISTRY_HTTP_ADDR: 0.0.0.0:5010
-      REGISTRY_HTTP_TLS_CERTIFICATE: /certs/server.crt
-      REGISTRY_HTTP_TLS_KEY: /certs/server.key
-    healthcheck:
-      test: ["CMD", "wget", "-q", "-Y", "off", "--spider", "--no-check-certificate", "https://127.0.0.1:5010/v2/"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-      start_period: 5s
-    restart: unless-stopped
-    networks:
-      - external_network
+
 
   # ============================================
   # API Gateway (Facade)
   # ============================================
   gateway:
-    image: ${ESB_REGISTRY:-}{{SLUG}}-gateway-containerd:${ESB_TAG:-latest}
+    image: ${ESB_REGISTRY:-registry:5010/}{{SLUG}}-gateway-containerd:${ESB_TAG:-latest}
+    pull_policy: never
     user: "0:0"
     build:
       context: services/gateway
       dockerfile: Dockerfile.containerd
       additional_contexts:
-        meta: service:meta-builder
-        config: ${CONFIG_DIR:-services/gateway/config}
+        config: ${CONFIG_DIR:-services/gateway/seed-config}
         common: ${COMMON_CONTEXT:-services/common}
         python-base: service:python-base
       args:
@@ -324,7 +297,6 @@ services:
     network_mode: "service:runtime-node"
     depends_on:
       agent: { condition: service_started }
-      provisioner: { condition: service_completed_successfully }
       database:
         condition: service_healthy
       s3-storage:
@@ -333,6 +305,7 @@ services:
       - ${WG_GATEWAY_CONF:-~/{{HOME_DIR}}/wireguard/gateway/wg0.conf}:/app/config/wireguard/wg0.conf:ro
       - ./config/haproxy.gateway.cfg:/app/config/haproxy.gateway.cfg:ro
       - ${CERT_DIR:-~/{{HOME_DIR}}/certs}:/app/config/ssl:ro
+      - ${CONFIG_DIR:-{{SLUG}}-runtime-config}:/app/runtime-config
     cap_add:
       - NET_ADMIN
     devices:
@@ -395,7 +368,8 @@ volumes:
   scylladb_data:
   rustfs_data:
   victorialogs_data:
-  registry_data:
+  {{SLUG}}-runtime-config:
+
   runtime_containerd_run:
   runtime_containerd_lib:
   esb_cni_data:
