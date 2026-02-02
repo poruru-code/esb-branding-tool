@@ -12,6 +12,8 @@ DOCKLE_TMP_DIR ?= /tmp
 DOCKLE_TMP_MODE ?= file
 BRAND_SLUG ?= {{SLUG}}
 IMAGE_TAG ?= latest
+ESB_REGISTRY ?= registry:5010/
+IMAGE_REGISTRY ?= $(ESB_REGISTRY)
 DOCKLE_TMP_VOLUME ?= $(BRAND_SLUG)-dockle-tmp
 DOCKLE_IGNORES ?= $(shell if [ -f .dockleignore ]; then grep -vE '^[[:space:]]*(#|$$)' .dockleignore | paste -sd, -; fi)
 
@@ -19,12 +21,12 @@ CST_CONFIG_DIR := config/container-structure-test
 
 OS_BASE_IMAGE ?= $(BRAND_SLUG)-os-base:latest
 PYTHON_BASE_IMAGE ?= $(BRAND_SLUG)-python-base:latest
-GATEWAY_IMAGE ?= $(BRAND_SLUG)-gateway-docker:$(IMAGE_TAG)
-GATEWAY_FC_IMAGE ?= $(BRAND_SLUG)-gateway-containerd:$(IMAGE_TAG)
-AGENT_IMAGE ?= $(BRAND_SLUG)-agent-docker:$(IMAGE_TAG)
-AGENT_CONTAINERD_IMAGE ?= $(BRAND_SLUG)-agent-containerd:$(IMAGE_TAG)
-RUNTIME_NODE_IMAGE ?= $(BRAND_SLUG)-runtime-node-containerd:$(IMAGE_TAG)
-RUNTIME_NODE_FC_IMAGE ?= $(BRAND_SLUG)-runtime-node-containerd:$(IMAGE_TAG)
+GATEWAY_IMAGE ?= $(IMAGE_REGISTRY)$(BRAND_SLUG)-gateway-docker:$(IMAGE_TAG)
+GATEWAY_FC_IMAGE ?= $(IMAGE_REGISTRY)$(BRAND_SLUG)-gateway-containerd:$(IMAGE_TAG)
+AGENT_IMAGE ?= $(IMAGE_REGISTRY)$(BRAND_SLUG)-agent-docker:$(IMAGE_TAG)
+AGENT_CONTAINERD_IMAGE ?= $(IMAGE_REGISTRY)$(BRAND_SLUG)-agent-containerd:$(IMAGE_TAG)
+RUNTIME_NODE_IMAGE ?= $(IMAGE_REGISTRY)$(BRAND_SLUG)-runtime-node-containerd:$(IMAGE_TAG)
+RUNTIME_NODE_FC_IMAGE ?= $(IMAGE_REGISTRY)$(BRAND_SLUG)-runtime-node-containerd:$(IMAGE_TAG)
 
 CST_RUN := docker run --rm \
 	-v /var/run/docker.sock:/var/run/docker.sock \
