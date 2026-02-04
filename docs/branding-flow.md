@@ -50,6 +50,7 @@ ESB_BASE_TAG=<tag>
 - 生成: `uv run python tools/branding/generate.py --root <target> --brand <name>`
 - チェック: `uv run python tools/branding/generate.py --root <target> --check --brand <name>`
 - ヘッダー省略: `--no-header` を追加
+- `.branding.env` を出力しない: `--no-env` を追加
 
 ## ESB の整合チェック（ベース側）
 ```bash
@@ -123,7 +124,7 @@ sequenceDiagram
 ## 生成時の副作用
 - `config/defaults.env`（`CLI_CMD` / `IMAGE_PREFIX` / `ENV_PREFIX`）が指定ブランドで更新される。
 - `meta/meta.go` がブランドに合わせて更新される。
-- `.branding.env` が生成される（追跡しない）。
+- `.branding.env` が生成される（追跡しない）。`--no-env` で出力を抑止できる。
 
 ## ヘッダーの共通ルール
 | ファイル形式 | コメント形式 | 内容（例） |
