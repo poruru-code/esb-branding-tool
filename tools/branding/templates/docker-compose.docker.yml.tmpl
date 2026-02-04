@@ -190,7 +190,7 @@ services:
     networks:
       - external_network
     volumes:
-      - ${CERT_DIR:-~/{{HOME_DIR}}/certs}:/app/config/ssl:ro
+      - ${CERT_DIR:-./.${CLI_CMD:-{{SLUG}}}/certs}:/app/config/ssl:ro
       - ${CONFIG_DIR:-{{SLUG}}-runtime-config}:/app/runtime-config
     environment:
       # --- Required / Core Authentication (auto-generated if unset) ---
@@ -287,7 +287,7 @@ services:
       - CONTAINERS_NETWORK=${NETWORK_EXTERNAL:-${PROJECT_NAME:-{{SLUG}}-${ENV:-default}}-external}
       - ENV
     volumes:
-      - ${CERT_DIR:-~/{{HOME_DIR}}/certs}:/app/config/ssl:ro
+      - ${CERT_DIR:-./.${CLI_CMD:-{{SLUG}}}/certs}:/app/config/ssl:ro
       - /var/run/docker.sock:/var/run/docker.sock
     ports:
       - "${PORT_AGENT_METRICS:-9091}:9091"
@@ -307,7 +307,7 @@ volumes:
 
 secrets:
   root_ca:
-    file: ${CERT_DIR:-~/{{HOME_DIR}}/certs}/rootCA.crt
+    file: ${CERT_DIR:-./.${CLI_CMD:-{{SLUG}}}/certs}/rootCA.crt
 
 networks:
   external_network:

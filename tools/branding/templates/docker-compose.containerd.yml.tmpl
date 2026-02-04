@@ -193,7 +193,7 @@ services:
     volumes:
       - runtime_containerd_run:/run/containerd
       - runtime_containerd_lib:/var/lib/containerd
-      - ${CERT_DIR:-~/{{HOME_DIR}}/certs}:/app/config/ssl:ro
+      - ${CERT_DIR:-./.${CLI_CMD:-{{SLUG}}}/certs}:/app/config/ssl:ro
     healthcheck:
       test: ["CMD", "ctr", "-a", "/run/containerd/containerd.sock", "version"]
       interval: 5s
@@ -242,7 +242,7 @@ services:
       - runtime_containerd_lib:/var/lib/containerd
       - esb_cni_data:/var/lib/cni
       - esb_cni_conf:/etc/cni/net.d
-      - ${CERT_DIR:-~/{{HOME_DIR}}/certs}:/app/config/ssl:ro
+      - ${CERT_DIR:-./.${CLI_CMD:-{{SLUG}}}/certs}:/app/config/ssl:ro
     environment:
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - ESB_TAG=${ESB_TAG:-latest}
@@ -293,9 +293,9 @@ services:
       s3-storage:
         condition: service_healthy
     volumes:
-      - ${WG_GATEWAY_CONF:-~/{{HOME_DIR}}/wireguard/gateway/wg0.conf}:/app/config/wireguard/wg0.conf:ro
+      - ${WG_GATEWAY_CONF:-./.${CLI_CMD:-{{SLUG}}}/wireguard/gateway/wg0.conf}:/app/config/wireguard/wg0.conf:ro
       - ./config/haproxy.gateway.cfg:/app/config/haproxy.gateway.cfg:ro
-      - ${CERT_DIR:-~/{{HOME_DIR}}/certs}:/app/config/ssl:ro
+      - ${CERT_DIR:-./.${CLI_CMD:-{{SLUG}}}/certs}:/app/config/ssl:ro
       - ${CONFIG_DIR:-{{SLUG}}-runtime-config}:/app/runtime-config
     cap_add:
       - NET_ADMIN
@@ -368,7 +368,7 @@ volumes:
 
 secrets:
   root_ca:
-    file: ${CERT_DIR:-~/{{HOME_DIR}}/certs}/rootCA.crt
+    file: ${CERT_DIR:-./.${CLI_CMD:-{{SLUG}}}/certs}/rootCA.crt
 
 networks:
   external_network:

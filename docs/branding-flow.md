@@ -145,7 +145,7 @@ sequenceDiagram
 
 ## CA とビルドフロー
 - 証明書生成は ESB / 下流 repo 側で `uv run python tools/cert-gen/generate.py` を実行する。
-- `CAROOT` は `~/.<slug>/certs` を使う。
+- `CAROOT` は `<repo_root>/.<slug>/certs` を使う。
 - Docker ビルドでは `ROOT_CA_FINGERPRINT` を渡し、再生成済みの compose / runtime ファイルを参照する。
 
 ## テスト/確認
