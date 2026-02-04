@@ -15,11 +15,6 @@ services:
         ROOT_CA_MOUNT_ID: root_ca
         ROOT_CA_CERT_FILENAME: ${ROOT_CA_CERT_FILENAME:-rootCA.crt}
         ROOT_CA_FINGERPRINT: ${ROOT_CA_FINGERPRINT:-}
-      cache_from:
-        - type=local,src=${BUILDX_CACHE_DIR:-{{OUTPUT_DIR}}/buildx-cache/base}
-      cache_to:
-        - type=local,dest=${BUILDX_CACHE_DIR:-{{OUTPUT_DIR}}/buildx-cache/base},mode=max
-
       secrets:
         - root_ca
 
@@ -33,10 +28,6 @@ services:
         ROOT_CA_MOUNT_ID: root_ca
         ROOT_CA_CERT_FILENAME: ${ROOT_CA_CERT_FILENAME:-rootCA.crt}
         ROOT_CA_FINGERPRINT: ${ROOT_CA_FINGERPRINT:-}
-      cache_from:
-        - type=local,src=${BUILDX_CACHE_DIR:-{{OUTPUT_DIR}}/buildx-cache/base}
-      cache_to:
-        - type=local,dest=${BUILDX_CACHE_DIR:-{{OUTPUT_DIR}}/buildx-cache/base},mode=max
       secrets:
         - root_ca
 
