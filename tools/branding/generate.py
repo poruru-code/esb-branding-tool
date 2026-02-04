@@ -91,7 +91,7 @@ def main() -> int:
         )
         print(f"==== BRANDING: {brand_name} ====")
         branding = derive_branding(brand_name)
-        if not args.check:
+        if not args.check and not args.no_env:
             write_branding_env(root, branding, brand_name)
         context = build_context(branding)
         mismatches = render_templates(
@@ -142,6 +142,11 @@ def parse_args() -> argparse.Namespace:
         "--no-header",
         action="store_true",
         help="Skip writing auto-generated headers when writing files",
+    )
+    parser.add_argument(
+        "--no-env",
+        action="store_true",
+        help="Skip writing .branding.env file",
     )
     return parser.parse_args()
 

@@ -11,7 +11,7 @@ variable "HOME" {
 }
 
 target "lambda-base" {
-  context    = "cli/internal/generator/assets"
+  context    = "cli/internal/infra/build/assets"
   dockerfile = "Dockerfile.lambda-base"
   tags       = ["${REGISTRY}{{SLUG}}-lambda-base:latest"]
   cache-from = ["type=local,src={{OUTPUT_DIR}}/buildx-cache/base"]
@@ -92,7 +92,7 @@ target "provisioner" {
   dockerfile = "Dockerfile"
   contexts = {
     config           = "services/gateway/config"
-    generator_assets = "cli/internal/generator/assets/site-packages"
+    generator_assets = "cli/internal/infra/build/assets/site-packages"
     python-base      = "target:python-base"
   }
   args = {
