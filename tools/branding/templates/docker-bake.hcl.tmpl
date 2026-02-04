@@ -10,6 +10,18 @@ variable "HOME" {
   default = ""
 }
 
+variable "BRAND_SLUG" {
+  default = "{{SLUG}}"
+}
+
+variable "BRAND_HOME" {
+  default = ".${BRAND_SLUG}"
+}
+
+variable "CERT_DIR" {
+  default = "./${BRAND_HOME}/certs"
+}
+
 target "lambda-base" {
   context    = "cli/internal/infra/build/assets"
   dockerfile = "Dockerfile.lambda-base"
@@ -25,7 +37,7 @@ target "os-base" {
     ROOT_CA_MOUNT_ID = "root_ca"
   }
   output = ["type=image,push=true"]
-  secret = ["id=root_ca,src=/home/akira/{{HOME_DIR}}/certs/rootCA.crt"]
+  secret = ["id=root_ca,src=${CERT_DIR}/rootCA.crt"]
 }
 
 target "python-base" {
@@ -36,7 +48,7 @@ target "python-base" {
     ROOT_CA_MOUNT_ID = "root_ca"
   }
   output = ["type=image,push=true"]
-  secret = ["id=root_ca,src=/home/akira/{{HOME_DIR}}/certs/rootCA.crt"]
+  secret = ["id=root_ca,src=${CERT_DIR}/rootCA.crt"]
 }
 
 group "base-images" {
