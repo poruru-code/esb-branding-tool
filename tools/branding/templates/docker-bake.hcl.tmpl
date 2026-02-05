@@ -94,7 +94,7 @@ target "provisioner" {
   dockerfile = "Dockerfile"
   contexts = {
     config           = "services/gateway/config"
-    generator_assets = "cli/internal/infra/build/assets/site-packages"
+    generator_assets = "cli/internal/infra/build/assets/python/site-packages"
     python-base      = "target:python-base"
   }
   args = {
