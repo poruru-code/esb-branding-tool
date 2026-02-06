@@ -23,8 +23,8 @@ variable "CERT_DIR" {
 }
 
 target "lambda-base" {
-  context    = "cli/internal/infra/build/assets"
-  dockerfile = "Dockerfile.lambda-base"
+  context    = "runtime/python"
+  dockerfile = "docker/Dockerfile.lambda-base"
   tags       = ["${REGISTRY}{{SLUG}}-lambda-base:latest"]
   output     = ["type=image,push=true"]
 }
@@ -94,7 +94,7 @@ target "provisioner" {
   dockerfile = "Dockerfile"
   contexts = {
     config           = "services/gateway/config"
-    generator_assets = "cli/internal/infra/build/assets/python/site-packages"
+    generator_assets = "runtime/python/hooks/site-packages"
     python-base      = "target:python-base"
   }
   args = {
