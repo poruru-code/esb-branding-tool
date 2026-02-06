@@ -134,7 +134,7 @@ services:
       dockerfile: Dockerfile
       additional_contexts:
         config: ${CONFIG_DIR:-services/gateway/seed-config}
-        generator_assets: ${GENERATOR_ASSETS_CONTEXT:-cli/internal/infra/build/assets/python/site-packages}
+        generator_assets: ${GENERATOR_ASSETS_CONTEXT:-runtime/python/extensions/sitecustomize/site-packages}
         python-base: service:python-base
       args:
         PYTHON_BASE_IMAGE: python-base
