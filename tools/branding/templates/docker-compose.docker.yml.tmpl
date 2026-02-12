@@ -252,6 +252,7 @@ services:
         condition: service_healthy
       s3-storage:
         condition: service_healthy
+    restart: unless-stopped
 
   # ============================================
   # Agent (Docker Runtime)
