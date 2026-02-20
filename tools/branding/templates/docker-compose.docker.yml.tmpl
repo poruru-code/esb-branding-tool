@@ -243,6 +243,7 @@ services:
       - AGENT_GRPC_TLS_KEY_PATH=/app/config/ssl/client.key
       - GATEWAY_INTERNAL_URL=https://gateway:8443
       - S3_ENDPOINT=http://s3-storage:9000
+      - S3_PRESIGN_ENDPOINT
       - DYNAMODB_ENDPOINT=http://database:8000
       - GATEWAY_VICTORIALOGS_URL=http://victorialogs:9428
     depends_on:

@@ -354,6 +354,7 @@ services:
       - DATA_PLANE_HOST=${DATA_PLANE_HOST:-10.88.0.1}
       - DYNAMODB_ENDPOINT=http://database:8000
       - S3_ENDPOINT=http://s3-storage:9000
+      - S3_PRESIGN_ENDPOINT
       - GATEWAY_VICTORIALOGS_URL=http://victorialogs:9428
 volumes:
   scylladb_data:
