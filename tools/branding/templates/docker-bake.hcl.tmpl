@@ -23,8 +23,8 @@ variable "CERT_DIR" {
 }
 
 target "lambda-base" {
-  context    = "runtime/python"
-  dockerfile = "docker/Dockerfile"
+  context    = "."
+  dockerfile = "runtime-hooks/python/docker/Dockerfile"
   tags       = ["${REGISTRY}{{SLUG}}-lambda-base:latest"]
   output     = ["type=image,push=true"]
 }
@@ -78,8 +78,7 @@ target "agent-docker" {
   context    = "services/agent"
   dockerfile = "Dockerfile.docker"
   contexts = {
-    meta_module = "meta"
-    os-base     = "target:os-base"
+    os-base = "target:os-base"
   }
   args = {
     OS_BASE_IMAGE = "os-base"
@@ -94,7 +93,7 @@ target "provisioner" {
   dockerfile = "Dockerfile"
   contexts = {
     config           = "services/gateway/config"
-    generator_assets = "runtime/python/extensions/sitecustomize/site-packages"
+    generator_assets = "runtime-hooks/python/sitecustomize/site-packages"
     python-base      = "target:python-base"
   }
   args = {
@@ -122,8 +121,7 @@ target "agent-containerd" {
   context    = "services/agent"
   dockerfile = "Dockerfile.containerd"
   contexts = {
-    meta_module = "meta"
-    os-base     = "target:os-base"
+    os-base = "target:os-base"
   }
   args = {
     OS_BASE_IMAGE = "os-base"

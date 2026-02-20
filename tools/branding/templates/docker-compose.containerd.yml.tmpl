@@ -134,7 +134,7 @@ services:
       dockerfile: Dockerfile
       additional_contexts:
         config: ${CONFIG_DIR:-services/gateway/seed-config}
-        generator_assets: ${GENERATOR_ASSETS_CONTEXT:-runtime/python/extensions/sitecustomize/site-packages}
+        generator_assets: ${GENERATOR_ASSETS_CONTEXT:-runtime-hooks/python/sitecustomize/site-packages}
         python-base: service:python-base
       args:
         PYTHON_BASE_IMAGE: python-base
@@ -193,7 +193,7 @@ services:
     volumes:
       - runtime_containerd_run:/run/containerd
       - runtime_containerd_lib:/var/lib/containerd
-      - ${CERT_DIR:-./.${CLI_CMD:-{{SLUG}}}/certs}:/app/config/ssl:ro
+      - ${CERT_DIR:-./.esb/certs}:/app/config/ssl:ro
     healthcheck:
       test: ["CMD", "ctr", "-a", "/run/containerd/containerd.sock", "version"]
       interval: 5s
@@ -210,7 +210,7 @@ services:
     container_name: ${PROJECT_NAME:-{{SLUG}}-${ENV:-default}}-coredns
     network_mode: "service:runtime-node"
     volumes:
-      - ./config/Corefile:/Corefile:ro
+      - ./services/runtime-node/config/Corefile:/Corefile:ro
     command: -conf /Corefile
     depends_on:
       runtime-node: { condition: service_started }
@@ -226,7 +226,6 @@ services:
       context: services/agent
       dockerfile: Dockerfile.containerd
       additional_contexts:
-        meta_module: ${META_MODULE_CONTEXT:-meta}
         os-base: service:os-base
       args:
         OS_BASE_IMAGE: os-base
@@ -242,7 +241,7 @@ services:
       - runtime_containerd_lib:/var/lib/containerd
       - esb_cni_data:/var/lib/cni
       - esb_cni_conf:/etc/cni/net.d
-      - ${CERT_DIR:-./.${CLI_CMD:-{{SLUG}}}/certs}:/app/config/ssl:ro
+      - ${CERT_DIR:-./.esb/certs}:/app/config/ssl:ro
     environment:
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - ESB_TAG=${ESB_TAG:-latest}
@@ -258,7 +257,8 @@ services:
       - AGENT_GRPC_KEY_PATH=/app/config/ssl/server.key
       - AGENT_GRPC_CA_CERT_PATH=/app/config/ssl/rootCA.crt
       - CONTAINERS_NETWORK=${NETWORK_EXTERNAL:-${PROJECT_NAME:-{{SLUG}}-${ENV:-default}}-external}
-      - ENV
+      - PROJECT_NAME=${PROJECT_NAME:-{{SLUG}}-${ENV:-default}}
+      - ENV=${ENV:-default}
     command: ["/app/agent"]
     restart: unless-stopped
 
@@ -293,9 +293,9 @@ services:
       s3-storage:
         condition: service_healthy
     volumes:
-      - ${WG_GATEWAY_CONF:-./.${CLI_CMD:-{{SLUG}}}/wireguard/gateway/wg0.conf}:/app/config/wireguard/wg0.conf:ro
-      - ./config/haproxy.gateway.cfg:/app/config/haproxy.gateway.cfg:ro
-      - ${CERT_DIR:-./.${CLI_CMD:-{{SLUG}}}/certs}:/app/config/ssl:ro
+      - ${WG_GATEWAY_CONF:-./.esb/wireguard/gateway/wg0.conf}:/app/config/wireguard/wg0.conf:ro
+      - ./services/gateway/config/haproxy.gateway.cfg:/app/config/haproxy.gateway.cfg:ro
+      - ${CERT_DIR:-./.esb/certs}:/app/config/ssl:ro
       - ${CONFIG_DIR:-{{SLUG}}-runtime-config}:/app/runtime-config
     cap_add:
       - NET_ADMIN
@@ -369,7 +369,7 @@ volumes:
 
 secrets:
   root_ca:
-    file: ${CERT_DIR:-./.${CLI_CMD:-{{SLUG}}}/certs}/rootCA.crt
+    file: ${CERT_DIR:-./.esb/certs}/rootCA.crt
 
 networks:
   external_network:
