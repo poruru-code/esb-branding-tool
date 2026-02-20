@@ -186,13 +186,13 @@ services:
     networks:
       - external_network
     environment:
-      - CNI_GW_IP=${DATA_PLANE_HOST:-10.88.0.1}
       - VHOST_VSOCK_REQUIRED=0
       - AGENT_RUNTIME=containerd
       - CONTAINERD_RUNTIME=${CONTAINERD_RUNTIME:-}
     volumes:
       - runtime_containerd_run:/run/containerd
       - runtime_containerd_lib:/var/lib/containerd
+      - esb_cni_data:/var/lib/cni
       - ${CERT_DIR:-./.esb/certs}:/app/config/ssl:ro
     healthcheck:
       test: ["CMD", "ctr", "-a", "/run/containerd/containerd.sock", "version"]
@@ -257,7 +257,6 @@ services:
       - AGENT_GRPC_KEY_PATH=/app/config/ssl/server.key
       - AGENT_GRPC_CA_CERT_PATH=/app/config/ssl/rootCA.crt
       - CONTAINERS_NETWORK=${NETWORK_EXTERNAL:-${PROJECT_NAME:-{{SLUG}}-${ENV:-default}}-external}
-      - PROJECT_NAME=${PROJECT_NAME:-{{SLUG}}-${ENV:-default}}
       - ENV=${ENV:-default}
     command: ["/app/agent"]
     restart: unless-stopped
@@ -297,6 +296,7 @@ services:
       - ./services/gateway/config/haproxy.gateway.cfg:/app/config/haproxy.gateway.cfg:ro
       - ${CERT_DIR:-./.esb/certs}:/app/config/ssl:ro
       - ${CONFIG_DIR:-{{SLUG}}-runtime-config}:/app/runtime-config
+      - esb_cni_data:/var/lib/cni:ro
     cap_add:
       - NET_ADMIN
     devices:
@@ -317,7 +317,6 @@ services:
       - SSL_KEY_PATH=/app/config/ssl/server.key
       - CONTAINERS_NETWORK=${NETWORK_EXTERNAL:-${PROJECT_NAME:-{{SLUG}}-${ENV:-default}}-external}
       - AUTH_ENDPOINT_PATH
-      - PROJECT_NAME=${PROJECT_NAME:-{{SLUG}}-${ENV:-default}}
 
       # --- Tuning & Resilience (Pass-through) ---
       - AGENT_INVOKE_PROXY
@@ -350,8 +349,6 @@ services:
       - AGENT_GRPC_TLS_CA_CERT_PATH=/app/config/ssl/rootCA.crt
       - AGENT_GRPC_TLS_CERT_PATH=/app/config/ssl/client.crt
       - AGENT_GRPC_TLS_KEY_PATH=/app/config/ssl/client.key
-      - GATEWAY_INTERNAL_URL=https://${DATA_PLANE_HOST:-10.88.0.1}:8443
-      - DATA_PLANE_HOST=${DATA_PLANE_HOST:-10.88.0.1}
       - DYNAMODB_ENDPOINT=http://database:8000
       - S3_ENDPOINT=http://s3-storage:9000
       - S3_PRESIGN_ENDPOINT
