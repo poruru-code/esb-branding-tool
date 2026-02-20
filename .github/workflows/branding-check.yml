@@ -38,15 +38,6 @@ jobs:
       - name: Setup uv
         uses: astral-sh/setup-uv@v3
 
-      - name: Create GitHub App token
-        id: app-token
-        uses: actions/create-github-app-token@v1
-        with:
-          app-id: ${{ secrets.BRANDING_APP_ID }}
-          private-key: ${{ secrets.BRANDING_APP_PRIVATE_KEY }}
-          owner: poruru-code
-          repositories: edge-serverless-box
-
       - name: Resolve payload
         run: |
           python - <<'PY'
@@ -88,17 +79,31 @@ jobs:
             print(f"invalid esb_repo: {esb_repo}", file=sys.stderr)
             sys.exit(1)
 
-          if esb_repo.startswith("http"):
-            repo_url = esb_repo
-          else:
-            repo_url = f"https://github.com/{repo_slug}.git"
+          owner, repo_name = repo_slug.split("/", 1)
+          # Repo was renamed from edge-serverless-box -> esb.
+          if repo_name == "edge-serverless-box":
+            repo_name = "esb"
+            repo_slug = f"{owner}/{repo_name}"
+
+          repo_url = f"https://github.com/{repo_slug}.git"
 
           with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as handle:
+            handle.write(f"ESB_OWNER={owner}\n")
+            handle.write(f"ESB_REPO_NAME={repo_name}\n")
             handle.write(f"ESB_REPO={repo_slug}\n")
             handle.write(f"ESB_REPO_URL={repo_url}\n")
             handle.write(f"ESB_REF={esb_ref}\n")
             handle.write(f"BRAND={brand}\n")
           PY
+
+      - name: Create GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.BRANDING_APP_ID }}
+          private-key: ${{ secrets.BRANDING_APP_PRIVATE_KEY }}
+          owner: ${{ env.ESB_OWNER }}
+          repositories: ${{ env.ESB_REPO_NAME }}
 
       - name: Checkout ESB
         uses: actions/checkout@v4
