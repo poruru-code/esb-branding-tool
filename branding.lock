@@ -1,12 +1,12 @@
 schema_version: 1
-locked_at: "2026-02-20T18:54:37Z"
+locked_at: "2026-02-20T19:06:36Z"
 
 tool:
-  commit: "d5ff48604b447650c4a3971875c8b6f15c70511b"
+  commit: "55569af8d3b0680257de827e27a3507e0b7d39bd"
 
 source:
   esb_repo: "https://github.com/poruru-code/esb.git"
-  esb_commit: "767dd3a717b4568f2da96d8170542768c8acf6a4"
+  esb_commit: "7ea7cc595484b6822b3cd439a8c6acca7b166c74"
 
 parameters:
   brand: "esb"
