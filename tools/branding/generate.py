@@ -46,25 +46,12 @@ class TemplateSpec(NamedTuple):
 
 TEMPLATES: tuple[TemplateSpec, ...] = (
     TemplateSpec(
-        "tools/branding/templates/config/defaults.env.tmpl", "config/defaults.env"
-    ),
-    TemplateSpec("tools/branding/templates/Makefile.tmpl", "Makefile"),
-    TemplateSpec("tools/branding/templates/meta/meta.go.tmpl", "meta/meta.go"),
-    TemplateSpec(
         "tools/branding/templates/docker-compose.docker.yml.tmpl",
         "docker-compose.docker.yml",
     ),
     TemplateSpec(
         "tools/branding/templates/docker-compose.containerd.yml.tmpl",
         "docker-compose.containerd.yml",
-    ),
-    TemplateSpec(
-        "tools/branding/templates/docker-compose.fc.yml.tmpl",
-        "docker-compose.fc.yml",
-    ),
-    TemplateSpec(
-        "tools/branding/templates/docker-compose.fc-node.yml.tmpl",
-        "docker-compose.fc-node.yml",
     ),
     TemplateSpec(
         "tools/branding/templates/docker-compose.infra.yml.tmpl",

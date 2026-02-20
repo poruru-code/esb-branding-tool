@@ -134,7 +134,7 @@ services:
       dockerfile: Dockerfile
       additional_contexts:
         config: ${CONFIG_DIR:-services/gateway/seed-config}
-        generator_assets: ${GENERATOR_ASSETS_CONTEXT:-runtime/python/extensions/sitecustomize/site-packages}
+        generator_assets: ${GENERATOR_ASSETS_CONTEXT:-runtime-hooks/python/sitecustomize/site-packages}
         python-base: service:python-base
       args:
         PYTHON_BASE_IMAGE: python-base
@@ -190,7 +190,7 @@ services:
     networks:
       - external_network
     volumes:
-      - ${CERT_DIR:-./.${CLI_CMD:-{{SLUG}}}/certs}:/app/config/ssl:ro
+      - ${CERT_DIR:-./.esb/certs}:/app/config/ssl:ro
       - ${CONFIG_DIR:-{{SLUG}}-runtime-config}:/app/runtime-config
     environment:
       # --- Required / Core Authentication (auto-generated if unset) ---
@@ -265,7 +265,6 @@ services:
       context: services/agent
       dockerfile: Dockerfile.docker
       additional_contexts:
-        meta_module: ${META_MODULE_CONTEXT:-meta}
         os-base: service:os-base
       args:
         OS_BASE_IMAGE: os-base
@@ -287,9 +286,10 @@ services:
       - AGENT_GRPC_KEY_PATH=/app/config/ssl/server.key
       - AGENT_GRPC_CA_CERT_PATH=/app/config/ssl/rootCA.crt
       - CONTAINERS_NETWORK=${NETWORK_EXTERNAL:-${PROJECT_NAME:-{{SLUG}}-${ENV:-default}}-external}
-      - ENV
+      - PROJECT_NAME=${PROJECT_NAME:-{{SLUG}}-${ENV:-default}}
+      - ENV=${ENV:-default}
     volumes:
-      - ${CERT_DIR:-./.${CLI_CMD:-{{SLUG}}}/certs}:/app/config/ssl:ro
+      - ${CERT_DIR:-./.esb/certs}:/app/config/ssl:ro
       - /var/run/docker.sock:/var/run/docker.sock
     ports:
       - "${PORT_AGENT_METRICS:-9091}:9091"
@@ -309,7 +309,7 @@ volumes:
 
 secrets:
   root_ca:
-    file: ${CERT_DIR:-./.${CLI_CMD:-{{SLUG}}}/certs}/rootCA.crt
+    file: ${CERT_DIR:-./.esb/certs}/rootCA.crt
 
 networks:
   external_network:
