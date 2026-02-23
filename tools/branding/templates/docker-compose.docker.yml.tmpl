@@ -140,8 +140,6 @@ services:
         PYTHON_BASE_IMAGE: python-base
 
     container_name: ${PROJECT_NAME:-{{SLUG}}-${ENV:-default}}-provisioner
-    profiles:
-      - deploy
     depends_on:
       python-base:
         condition: service_completed_successfully
@@ -253,6 +251,8 @@ services:
         condition: service_healthy
       s3-storage:
         condition: service_healthy
+      provisioner:
+        condition: service_completed_successfully
     restart: unless-stopped
 
   # ============================================

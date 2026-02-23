@@ -140,8 +140,6 @@ services:
         PYTHON_BASE_IMAGE: python-base
 
     container_name: ${PROJECT_NAME:-{{SLUG}}-${ENV:-default}}-provisioner
-    profiles:
-      - deploy
     depends_on:
       database:
         condition: service_healthy
@@ -291,6 +289,8 @@ services:
         condition: service_healthy
       s3-storage:
         condition: service_healthy
+      provisioner:
+        condition: service_completed_successfully
     volumes:
       - ${WG_GATEWAY_CONF:-./.esb/wireguard/gateway/wg0.conf}:/app/config/wireguard/wg0.conf:ro
       - ./services/gateway/config/haproxy.gateway.cfg:/app/config/haproxy.gateway.cfg:ro
