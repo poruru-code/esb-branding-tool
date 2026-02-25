@@ -3,6 +3,8 @@
 # Why: Ensure generator inputs and substitutions stay consistent.
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from tools.branding.branding import BrandingError, build_context, derive_branding
@@ -30,6 +32,21 @@ def test_render_string_replaces_placeholders() -> None:
 def test_render_string_rejects_unknown_keys() -> None:
     with pytest.raises(BrandingError):
         render_string("{{MISSING}}", {})
+
+
+def test_compose_templates_include_proxy_ca_secret_wiring() -> None:
+    branding = derive_branding("esb")
+    context = build_context(branding)
+    template_paths = (
+        Path("tools/branding/templates/docker-compose.docker.yml.tmpl"),
+        Path("tools/branding/templates/docker-compose.containerd.yml.tmpl"),
+    )
+
+    for template_path in template_paths:
+        rendered = render_string(template_path.read_text(encoding="utf-8"), context)
+        assert "PROXY_CA_MOUNT_ID: proxy_ca" in rendered
+        assert rendered.count("- proxy_ca") >= 2
+        assert "  proxy_ca:\n    file: ${PROXY_CA_CERT_FILE:-${CERT_DIR:-./.esb/certs}/rootCA.crt}" in rendered
 
 
 def test_load_brand_from_config_reads_brand(tmp_path) -> None:
