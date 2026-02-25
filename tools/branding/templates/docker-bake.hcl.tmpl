@@ -10,16 +10,8 @@ variable "HOME" {
   default = ""
 }
 
-variable "BRAND_SLUG" {
-  default = "{{SLUG}}"
-}
-
-variable "BRAND_HOME" {
-  default = ".${BRAND_SLUG}"
-}
-
 variable "CERT_DIR" {
-  default = "./${BRAND_HOME}/certs"
+  default = "./.{{SLUG}}/certs"
 }
 
 target "lambda-base" {
