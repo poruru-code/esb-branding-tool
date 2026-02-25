@@ -3,7 +3,7 @@
 ## 目的と原則
 - ESB 本体は常に `config/defaults.env` の `CLI_CMD=esb` を維持する（下流固有情報は含めない）。
 - ブランド変更は下流でのみ行う。
-- 生成物のみコミットし、`.branding.env` は追跡しない。
+- 生成物のみコミットし、`.branding.env` は出力しない。
 - テンプレートと生成ツールは `esb-branding-tool` に集約する。
 
 ## 前提
@@ -50,7 +50,6 @@ ESB_BASE_TAG=<tag>
 - 生成: `uv run python tools/branding/generate.py --root <target> --brand <name>`
 - チェック: `uv run python tools/branding/generate.py --root <target> --check --brand <name>`
 - ヘッダー省略: `--no-header` を追加
-- `.branding.env` を出力しない: `--no-env` を追加
 
 ## ESB の整合チェック（ベース側）
 ```bash
@@ -122,9 +121,10 @@ sequenceDiagram
 ```
 
 ## 生成時の副作用
-- `config/defaults.env`（`CLI_CMD` / `IMAGE_PREFIX` / `ENV_PREFIX`）が指定ブランドで更新される。
-- `meta/meta.go` がブランドに合わせて更新される。
-- `.branding.env` が生成される（追跡しない）。`--no-env` で出力を抑止できる。
+- `docker-compose.docker.yml` / `docker-compose.containerd.yml` / `docker-compose.infra.yml` が更新される。
+- `docker-bake.hcl` が更新される。
+- `pkg/deployops/branding_constants_gen.go` が更新される。
+- 非 `esb` ブランドでは `.esb-info` が生成・更新される。
 
 ## ヘッダーの共通ルール
 | ファイル形式 | コメント形式 | 内容（例） |
