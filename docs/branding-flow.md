@@ -1,5 +1,7 @@
 # ブランディング運用フロー（ESB + 下流）
 
+仕組みの詳細は `docs/branding-mechanism.md` を参照。
+
 ## 目的と原則
 - ESB 本体は常に `config/defaults.env` の `CLI_CMD=esb` を維持する（下流固有情報は含めない）。
 - ブランド変更は下流でのみ行う。
@@ -124,6 +126,7 @@ sequenceDiagram
 - `docker-compose.docker.yml` / `docker-compose.containerd.yml` / `docker-compose.infra.yml` が更新される。
 - `docker-bake.hcl` が更新される。
 - `.mise.toml` が更新される。
+- `e2e/runner/branding_constants_gen.py` が更新される。
 - `pkg/deployops/branding_constants_gen.go` が更新される。
 - 非 `esb` ブランドでは `.esb-info` が生成・更新される。
 
