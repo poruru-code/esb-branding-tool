@@ -60,6 +60,10 @@ TEMPLATES: tuple[TemplateSpec, ...] = (
         "docker-bake.hcl",
     ),
     TemplateSpec(
+        "tools/branding/templates/.mise.toml.tmpl",
+        ".mise.toml",
+    ),
+    TemplateSpec(
         "tools/branding/templates/pkg/deployops/branding_constants_gen.go.tmpl",
         "pkg/deployops/branding_constants_gen.go",
     ),

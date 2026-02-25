@@ -123,6 +123,7 @@ sequenceDiagram
 ## 生成時の副作用
 - `docker-compose.docker.yml` / `docker-compose.containerd.yml` / `docker-compose.infra.yml` が更新される。
 - `docker-bake.hcl` が更新される。
+- `.mise.toml` が更新される。
 - `pkg/deployops/branding_constants_gen.go` が更新される。
 - 非 `esb` ブランドでは `.esb-info` が生成・更新される。
 
