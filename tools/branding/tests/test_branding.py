@@ -37,16 +37,26 @@ def test_render_string_rejects_unknown_keys() -> None:
 def test_compose_templates_include_proxy_ca_secret_wiring() -> None:
     branding = derive_branding("esb")
     context = build_context(branding)
-    template_paths = (
-        Path("tools/branding/templates/docker-compose.docker.yml.tmpl"),
-        Path("tools/branding/templates/docker-compose.containerd.yml.tmpl"),
-    )
+    template_expectations = {
+        Path("tools/branding/templates/docker-compose.docker.yml.tmpl"): (
+            "  proxy_ca:\n    file: ${PROXY_CA_CERT_FILE:-${CERT_DIR:-./.esb/certs}/rootCA.crt}"
+        ),
+        Path("tools/branding/templates/docker-compose.containerd.yml.tmpl"): (
+            "  proxy_ca:\n    file: ${PROXY_CA_CERT_FILE:-${CERT_DIR:-./.esb/certs}/rootCA.crt}"
+        ),
+        Path("tools/branding/templates/docker-compose.fc.yml.tmpl"): (
+            "  proxy_ca:\n    file: ${PROXY_CA_CERT_FILE:-${CERT_DIR:-./.${CLI_CMD:-esb}/certs}/rootCA.crt}"
+        ),
+        Path("tools/branding/templates/docker-compose.fc-node.yml.tmpl"): (
+            "  proxy_ca:\n    file: ${PROXY_CA_CERT_FILE:-${CERT_DIR:-./.${CLI_CMD:-esb}/certs}/rootCA.crt}"
+        ),
+    }
 
-    for template_path in template_paths:
+    for template_path, expected_secret_line in template_expectations.items():
         rendered = render_string(template_path.read_text(encoding="utf-8"), context)
         assert "PROXY_CA_MOUNT_ID: proxy_ca" in rendered
         assert rendered.count("- proxy_ca") >= 2
-        assert "  proxy_ca:\n    file: ${PROXY_CA_CERT_FILE:-${CERT_DIR:-./.esb/certs}/rootCA.crt}" in rendered
+        assert expected_secret_line in rendered
 
 
 def test_load_brand_from_config_reads_brand(tmp_path) -> None:

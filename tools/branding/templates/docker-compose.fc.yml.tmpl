@@ -132,6 +132,9 @@ services:
         generator_assets: ${GENERATOR_ASSETS_CONTEXT:-runtime/python/extensions/sitecustomize/site-packages}
       args:
         PYTHON_BASE_IMAGE: {{SLUG}}-python-base:latest
+        PROXY_CA_MOUNT_ID: proxy_ca
+      secrets:
+        - proxy_ca
 
     container_name: ${PROJECT_NAME:-{{SLUG}}-${ENV:-default}}-provisioner
     depends_on:
@@ -282,9 +285,12 @@ services:
         common: ${COMMON_CONTEXT:-services/common}
       args:
         PYTHON_BASE_IMAGE: {{SLUG}}-python-base:latest
+        PROXY_CA_MOUNT_ID: proxy_ca
         SERVICE_USER: {{SLUG}}
         SERVICE_UID: ${RUN_UID:-1000}
         SERVICE_GID: ${RUN_GID:-1000}
+      secrets:
+        - proxy_ca
 
     container_name: ${PROJECT_NAME:-{{SLUG}}-${ENV:-default}}-gateway
     network_mode: "service:runtime-node"
@@ -370,6 +376,8 @@ volumes:
 secrets:
   root_ca:
     file: ${CERT_DIR:-./.${CLI_CMD:-{{SLUG}}}/certs}/rootCA.crt
+  proxy_ca:
+    file: ${PROXY_CA_CERT_FILE:-${CERT_DIR:-./.${CLI_CMD:-{{SLUG}}}/certs}/rootCA.crt}
 
 networks:
   external_network:
