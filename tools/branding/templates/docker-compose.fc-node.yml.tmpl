@@ -128,7 +128,7 @@ services:
       context: services/provisioner
       dockerfile: Dockerfile
       additional_contexts:
-        config: ${CONFIG_DIR:-services/gateway/config}
+        config: services/gateway/seed-config
         generator_assets: ${GENERATOR_ASSETS_CONTEXT:-runtime/python/extensions/sitecustomize/site-packages}
       args:
         PYTHON_BASE_IMAGE: {{SLUG}}-python-base:latest
@@ -278,7 +278,7 @@ services:
       context: services/gateway
       dockerfile: Dockerfile.containerd
       additional_contexts:
-        config: ${CONFIG_DIR:-services/gateway/config}
+        config: services/gateway/seed-config
         common: ${COMMON_CONTEXT:-services/common}
       args:
         PYTHON_BASE_IMAGE: {{SLUG}}-python-base:latest

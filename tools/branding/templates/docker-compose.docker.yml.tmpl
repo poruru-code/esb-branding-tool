@@ -39,7 +39,7 @@ services:
     container_name: ${PROJECT_NAME:-{{SLUG}}-${ENV:-default}}-permission-helper
     volumes:
       - rustfs_data:/data/rustfs
-      - ${CONFIG_DIR:-{{SLUG}}-runtime-config}:/data/runtime-config
+      - {{SLUG}}-runtime-config:/data/runtime-config
     command: >
       sh -c "
         chown -R 10001:10001 /data/rustfs 2>/dev/null || true && \
@@ -133,7 +133,7 @@ services:
       context: services/provisioner
       dockerfile: Dockerfile
       additional_contexts:
-        config: ${CONFIG_DIR:-services/gateway/seed-config}
+        config: services/gateway/seed-config
         generator_assets: ${GENERATOR_ASSETS_CONTEXT:-runtime-hooks/python/sitecustomize/site-packages}
         python-base: service:python-base
       args:
@@ -161,7 +161,7 @@ services:
     networks:
       external_network: {}
     volumes:
-      - ${CONFIG_DIR:-{{SLUG}}-runtime-config}:/app/runtime-config
+      - {{SLUG}}-runtime-config:/app/runtime-config
 
   # ============================================
   # API Gateway (Facade)
@@ -173,7 +173,7 @@ services:
       context: services/gateway
       dockerfile: Dockerfile.docker
       additional_contexts:
-        config: ${CONFIG_DIR:-services/gateway/seed-config}
+        config: services/gateway/seed-config
         common: ${COMMON_CONTEXT:-services/common}
         python-base: service:python-base
       args:
@@ -189,7 +189,7 @@ services:
       - external_network
     volumes:
       - ${CERT_DIR:-./.esb/certs}:/app/config/ssl:ro
-      - ${CONFIG_DIR:-{{SLUG}}-runtime-config}:/app/runtime-config
+      - {{SLUG}}-runtime-config:/app/runtime-config
     environment:
       # --- Required / Core Authentication (auto-generated if unset) ---
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:-}

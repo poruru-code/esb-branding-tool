@@ -140,7 +140,7 @@ sequenceDiagram
 
 ## ステージングキャッシュ
 - ステージングはリポジトリ外に置く（`XDG_CACHE_HOME/<slug>/staging` を優先）。
-- `ESB_CONFIG_DIR` はステージング済み `config/` を指し、Docker BuildKit の追加コンテキストとして使う。
+- Docker BuildKit の追加コンテキスト `config` は `services/gateway/seed-config` に固定される。
 - 関数イメージには `com.<slug>.image_fingerprint` ラベルを付け、更新判定に使う。
 
 ## CA とビルドフロー
