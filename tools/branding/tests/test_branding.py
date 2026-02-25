@@ -19,6 +19,7 @@ def test_load_branding_builds_context() -> None:
     branding = derive_branding("esb")
     context = build_context(branding)
     assert context["CLI_NAME"] == "esb"
+    assert context["CTL_BIN_NAME"] == "esb-ctl"
     assert context["ENV_PREFIX"] == "ESB"
     assert context["RUNTIME_CNI_BRIDGE"] == "esb0"
 
@@ -115,3 +116,4 @@ def test_deployops_branding_constants_template_renders_brand_paths() -> None:
     assert 'defaultBrandSlug    = "esb"' in rendered
     assert 'defaultBrandHomeDir = "." + defaultBrandSlug' in rendered
     assert 'defaultBrandCertDir = defaultBrandHomeDir + "/certs"' in rendered
+    assert 'defaultCtlCommandName = "esb-ctl"' in rendered

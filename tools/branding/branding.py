@@ -76,8 +76,10 @@ def derive_branding(brand: str) -> Branding:
 
 def build_context(branding: Branding) -> dict[str, str]:
     env_prefix_var = "${" + branding.env_prefix
+    ctl_bin_name = f"{branding.slug}-ctl"
     return {
         "CLI_NAME": branding.cli_name,
+        "CTL_BIN_NAME": ctl_bin_name,
         "SLUG": branding.slug,
         "ENV_PREFIX": branding.env_prefix,
         "ENV_PREFIX_VAR": env_prefix_var,
