@@ -29,8 +29,8 @@ run = [
   "uv sync --all-extras --native-tls",
   "lefthook install",
   "mise run build-ctl",
-  "mise run setup:certs",
   "mise run setup:buildx",
+  "mise run setup:certs",
 ]
 
 [tasks."setup:certs"]
@@ -40,8 +40,8 @@ run = "uv run python tools/cert-gen/generate.py"
 [tasks."rotate:certs:leaf"]
 description = "Regenerate server/client certificate files only (restart required)"
 run = [
-  "CERT_DIR=\"${CERT_DIR:-$(uv run python tools/cert-gen/resolve_default_cert_dir.py)}\"; rm -f \"$CERT_DIR/server.crt\" \"$CERT_DIR/server.key\" \"$CERT_DIR/client.crt\" \"$CERT_DIR/client.key\"",
-  "CERT_DIR=\"${CERT_DIR:-$(uv run python tools/cert-gen/resolve_default_cert_dir.py)}\"; mise run setup:certs -- --output-dir \"$CERT_DIR\"",
+  "CERT_DIR=\"${CERT_DIR:-$(uv run python tools/cert-gen/generate.py --show-output-dir)}\"; rm -f \"$CERT_DIR/server.crt\" \"$CERT_DIR/server.key\" \"$CERT_DIR/client.crt\" \"$CERT_DIR/client.key\"",
+  "mise run setup:certs",
 ]
 
 [tasks."rotate:certs:leaf:docker"]
@@ -60,13 +60,13 @@ run = [
 
 [tasks."rotate:certs:all:files"]
 description = "Regenerate Root CA and leaf certificate files only (no image rebuild)"
-run = "CERT_DIR=\"${CERT_DIR:-$(uv run python tools/cert-gen/resolve_default_cert_dir.py)}\"; mise run setup:certs -- --force --skip-root-ca-install --output-dir \"$CERT_DIR\""
+run = "mise run setup:certs -- --force --no-trust-install"
 
 [tasks."rotate:certs:all:docker"]
 description = "Regenerate Root/leaf certs, then rebuild/redeploy docker mode services"
 run = [
   "mise run rotate:certs:all:files",
-  "CERT_DIR=\"${CERT_DIR:-$(uv run python tools/cert-gen/resolve_default_cert_dir.py)}\"; ROOT_CA_FINGERPRINT=$(md5sum \"$CERT_DIR/rootCA.crt\"); ROOT_CA_FINGERPRINT=${ROOT_CA_FINGERPRINT%% *}; ROOT_CA_FINGERPRINT=\"$ROOT_CA_FINGERPRINT\" docker compose -f docker-compose.docker.yml build os-base python-base gateway agent",
+  "CERT_DIR=\"${CERT_DIR:-$(uv run python tools/cert-gen/generate.py --show-output-dir)}\"; ROOT_CA_FINGERPRINT=$(md5sum \"$CERT_DIR/rootCA.crt\"); ROOT_CA_FINGERPRINT=${ROOT_CA_FINGERPRINT%% *}; ROOT_CA_FINGERPRINT=\"$ROOT_CA_FINGERPRINT\" docker compose -f docker-compose.docker.yml build os-base python-base gateway agent",
   "docker compose -f docker-compose.docker.yml up -d --force-recreate gateway agent",
 ]
 
@@ -74,7 +74,7 @@ run = [
 description = "Regenerate Root/leaf certs, then rebuild/redeploy containerd mode services"
 run = [
   "mise run rotate:certs:all:files",
-  "CERT_DIR=\"${CERT_DIR:-$(uv run python tools/cert-gen/resolve_default_cert_dir.py)}\"; ROOT_CA_FINGERPRINT=$(md5sum \"$CERT_DIR/rootCA.crt\"); ROOT_CA_FINGERPRINT=${ROOT_CA_FINGERPRINT%% *}; ROOT_CA_FINGERPRINT=\"$ROOT_CA_FINGERPRINT\" docker compose -f docker-compose.containerd.yml build os-base python-base runtime-node agent gateway",
+  "CERT_DIR=\"${CERT_DIR:-$(uv run python tools/cert-gen/generate.py --show-output-dir)}\"; ROOT_CA_FINGERPRINT=$(md5sum \"$CERT_DIR/rootCA.crt\"); ROOT_CA_FINGERPRINT=${ROOT_CA_FINGERPRINT%% *}; ROOT_CA_FINGERPRINT=\"$ROOT_CA_FINGERPRINT\" docker compose -f docker-compose.containerd.yml build os-base python-base runtime-node agent gateway",
   "docker compose -f docker-compose.containerd.yml up -d --force-recreate runtime-node agent gateway",
 ]
 
