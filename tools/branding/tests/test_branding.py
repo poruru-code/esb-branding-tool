@@ -125,3 +125,5 @@ def test_mise_template_renders_brand_ctl_binary_name() -> None:
     assert '[tasks.build-ctl]' in rendered
     assert 'description = "Build acme-ctl to ~/.local/bin"' in rendered
     assert 'go build -o ~/.local/bin/acme-ctl ./cmd/artifactctl' in rendered
+    assert 'tools/cert-gen/generate.py --print-output-dir' in rendered
+    assert rendered.index('mise run setup:buildx') < rendered.index('mise run setup:certs')
