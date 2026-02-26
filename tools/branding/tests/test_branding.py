@@ -128,3 +128,4 @@ def test_mise_template_renders_brand_ctl_binary_name() -> None:
     assert 'tools/cert-gen/generate.py --show-output-dir' in rendered
     assert '--no-trust-install' in rendered
     assert rendered.index('mise run setup:buildx') < rendered.index('mise run setup:certs')
+    assert '${CERT_DIR:-$(uv run python tools/cert-gen/generate.py --show-output-dir)}' not in rendered
