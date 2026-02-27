@@ -233,6 +233,8 @@ services:
 
     container_name: ${PROJECT_NAME:-{{SLUG}}-${ENV:-default}}-agent
     cap_add: [NET_ADMIN, SYS_ADMIN]
+    security_opt:
+      - apparmor=unconfined
     network_mode: "service:runtime-node"
     pid: "service:runtime-node"
     depends_on:
