@@ -126,7 +126,7 @@ sequenceDiagram
 - `docker-compose.docker.yml` / `docker-compose.containerd.yml` / `docker-compose.infra.yml` が更新される。
 - `docker-bake.hcl` が更新される。
 - `.mise.toml` が更新される。
-- `e2e/runner/branding_constants_gen.py` が更新される。
+- `tools/cli/branding_constants_gen.py` が更新される。
 - 非 `esb` ブランドでは `.esb-info` が生成・更新される。
 
 ## ヘッダーの共通ルール

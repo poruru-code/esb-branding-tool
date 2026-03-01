@@ -106,7 +106,7 @@ sequenceDiagram
 | `tools/branding/templates/docker-compose.infra.yml.tmpl` | `docker-compose.infra.yml` |
 | `tools/branding/templates/docker-bake.hcl.tmpl` | `docker-bake.hcl` |
 | `tools/branding/templates/.mise.toml.tmpl` | `.mise.toml` |
-| `tools/branding/templates/e2e/runner/branding_constants_gen.py.tmpl` | `e2e/runner/branding_constants_gen.py` |
+| `tools/branding/templates/tools/cli/branding_constants_gen.py.tmpl` | `tools/cli/branding_constants_gen.py` |
 
 置換ルール:
 - プレースホルダ形式: `{{ KEY }}`
