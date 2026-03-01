@@ -67,10 +67,6 @@ TEMPLATES: tuple[TemplateSpec, ...] = (
         "tools/branding/templates/e2e/runner/branding_constants_gen.py.tmpl",
         "e2e/runner/branding_constants_gen.py",
     ),
-    TemplateSpec(
-        "tools/branding/templates/pkg/deployops/branding_constants_gen.go.tmpl",
-        "pkg/deployops/branding_constants_gen.go",
-    ),
 )
 
 _PLACEHOLDER_RE = re.compile(r"{{\s*([A-Z0-9_]+)\s*}}")

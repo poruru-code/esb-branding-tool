@@ -107,7 +107,6 @@ sequenceDiagram
 | `tools/branding/templates/docker-bake.hcl.tmpl` | `docker-bake.hcl` |
 | `tools/branding/templates/.mise.toml.tmpl` | `.mise.toml` |
 | `tools/branding/templates/e2e/runner/branding_constants_gen.py.tmpl` | `e2e/runner/branding_constants_gen.py` |
-| `tools/branding/templates/pkg/deployops/branding_constants_gen.go.tmpl` | `pkg/deployops/branding_constants_gen.go` |
 
 置換ルール:
 - プレースホルダ形式: `{{ KEY }}`

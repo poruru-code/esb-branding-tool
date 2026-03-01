@@ -127,7 +127,6 @@ sequenceDiagram
 - `docker-bake.hcl` が更新される。
 - `.mise.toml` が更新される。
 - `e2e/runner/branding_constants_gen.py` が更新される。
-- `pkg/deployops/branding_constants_gen.go` が更新される。
 - 非 `esb` ブランドでは `.esb-info` が生成・更新される。
 
 ## ヘッダーの共通ルール

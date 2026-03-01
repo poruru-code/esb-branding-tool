@@ -107,24 +107,14 @@ def test_resolve_brand_requires_input(tmp_path) -> None:
         resolve_brand(None, tmp_path)
 
 
-def test_deployops_branding_constants_template_renders_brand_paths() -> None:
-    branding = derive_branding("esb")
-    context = build_context(branding)
-    template_path = Path("tools/branding/templates/pkg/deployops/branding_constants_gen.go.tmpl")
-    rendered = render_string(template_path.read_text(encoding="utf-8"), context)
-    assert 'defaultBrandSlug    = "esb"' in rendered
-    assert 'defaultBrandHomeDir = "." + defaultBrandSlug' in rendered
-    assert 'defaultBrandCertDir = defaultBrandHomeDir + "/certs"' in rendered
-
-
 def test_mise_template_renders_brand_ctl_binary_name() -> None:
     branding = derive_branding("acme")
     context = build_context(branding)
     template_path = Path("tools/branding/templates/.mise.toml.tmpl")
     rendered = render_string(template_path.read_text(encoding="utf-8"), context)
     assert '[tasks.build-ctl]' in rendered
-    assert 'description = "Build acme-ctl to ~/.local/bin"' in rendered
-    assert 'go build -o ~/.local/bin/acme-ctl ./cmd/artifactctl' in rendered
+    assert 'description = "Install Python acme-ctl wrapper to ~/.local/bin"' in rendered
+    assert 'uv run python tools/cli/install.py' in rendered
     assert 'tools/cert-gen/generate.py --show-output-dir' in rendered
     assert '--no-trust-install' in rendered
     assert rendered.index('mise run setup:buildx') < rendered.index('mise run setup:certs')

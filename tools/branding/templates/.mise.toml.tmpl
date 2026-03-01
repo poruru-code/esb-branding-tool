@@ -95,9 +95,7 @@ run = [
 ]
 
 [tasks.build-ctl]
-description = "Build {{SLUG}}-ctl to ~/.local/bin"
-dir = "tools/artifactctl"
+description = "Install Python {{SLUG}}-ctl wrapper to ~/.local/bin"
 run = [
-  "mkdir -p ~/.local/bin",
-  "go build -o ~/.local/bin/{{SLUG}}-ctl ./cmd/artifactctl",
+  "uv run python tools/cli/install.py",
 ]
