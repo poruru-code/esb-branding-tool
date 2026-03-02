@@ -119,3 +119,17 @@ def test_mise_template_renders_brand_ctl_binary_name() -> None:
     assert '--no-trust-install' in rendered
     assert rendered.index('mise run setup:buildx') < rendered.index('mise run setup:certs')
     assert '${CERT_DIR:-$(uv run python tools/cert-gen/generate.py --show-output-dir)}' not in rendered
+
+
+def test_cli_branding_constants_template_exposes_brand_scoped_defaults() -> None:
+    branding = derive_branding("acme")
+    context = build_context(branding)
+    template_path = Path("tools/branding/templates/tools/cli/branding_constants_gen.py.tmpl")
+    rendered = render_string(template_path.read_text(encoding="utf-8"), context)
+    assert 'DEFAULT_BRAND_SLUG = "acme"' in rendered
+    assert 'DEFAULT_CTL_BIN = "acme-ctl"' in rendered
+    assert 'DEFAULT_REGISTRY_CONTAINER_NAME = DEFAULT_BRAND_SLUG + "-infra-registry"' in rendered
+    assert 'DEFAULT_RUNTIME_CONFIG_VOLUME_NAME = DEFAULT_BRAND_SLUG + "-runtime-config"' in rendered
+    assert 'DEFAULT_LAMBDA_BASE_REPO = DEFAULT_BRAND_SLUG + "-lambda-base"' in rendered
+    assert 'DEFAULT_MAVEN_SHIM_IMAGE_PREFIX = DEFAULT_BRAND_SLUG + "-maven-shim"' in rendered
+    assert 'DEFAULT_E2E_FIXTURE_IMAGE_PREFIX = DEFAULT_BRAND_SLUG + "-e2e-image"' in rendered
